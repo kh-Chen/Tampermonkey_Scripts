@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @author       sehuatang_chen
+// @version      1.0.3
 // @description  浏览帖子列表时自动加载内部前三张图片供预览。如需支持免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接。当前排除技术区
+// @author       sehuatang_chen
+// @license      MIT
 
 // @match        https://www.sehuatang.org/forum.php?mod=forumdisplay*
 // @match        https://sehuatang.org/forum.php?mod=forumdisplay*
@@ -16,10 +18,7 @@
 // @grant          GM_xmlhttpRequest
 // @require https://code.jquery.com/jquery-3.6.1.min.js
 
-// @version 1.0.3
-// @license MIT
 // ==/UserScript==
-/* global $ */
 
 $(document).ready(function(){
     console.log("98imgloader ready")
