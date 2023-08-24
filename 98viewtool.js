@@ -6,12 +6,9 @@
 // @author       sehuatang_chen
 // @license      MIT
 
-// @match        https://www.sehuatang.org/forum.php?mod=forumdisplay*
-// @match        https://sehuatang.org/forum.php?mod=forumdisplay*
-// @match        https://www.sehuatang.net/forum.php?mod=forumdisplay*
-// @match        https://sehuatang.net/forum.php?mod=forumdisplay*
-// @match        https://www.mzjvl.com/forum.php?mod=forumdisplay*
-// @match        https://mzjvl.com/forum.php?mod=forumdisplay*
+// @match        https://*sehuatang.org/forum.php?mod=forumdisplay*
+// @match        https://*sehuatang.net/forum.php?mod=forumdisplay*
+// @match        https://*mzjvl.com/forum.php?mod=forumdisplay*
 
 // @exclude        https://mzjvl.com/forum.php?mod=forumdisplay&fid=95&filter=author&typeid=710*
 
