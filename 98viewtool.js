@@ -1,125 +1,341 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.0.5
-// @description  浏览帖子列表时自动加载内部前三张图片供预览。如需支持免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
+// @version      1.2.0
+// @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
 
-// @match        https://*sehuatang.org/forum.php?mod=forumdisplay*
-// @match        https://*sehuatang.net/forum.php?mod=forumdisplay*
-// @match        https://*mzjvl.com/forum.php?mod=forumdisplay*
+// @match        https://www.sehuatang.org/forum.php?mod=forumdisplay*
+// @match        https://www.sehuatang.net/forum.php?mod=forumdisplay*
+// @match        https://mzjvl.com/forum.php?mod=forumdisplay*
+// @match        https://9xr2.app/forum.php?mod=forumdisplay*
+// @match        https://kzs1w.com/forum.php?mod=forumdisplay*
 
 // @grant        GM_xmlhttpRequest
-// @require      https://code.jquery.com/jquery-3.6.1.min.js
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_addStyle
+// @grant        GM_registerMenuCommand
+// @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js
+// @require      https://cdn.bootcdn.net/ajax/libs/jquery_lazyload/1.9.7/jquery.lazyload.min.js
 
 // ==/UserScript==
 /* global $ */
 $(document).ready(function(){
-    console.log("98imgloader ready")
-    var headers = {
+    if ( GM_getValue("switch_autoload") == undefined) {
+        GM_setValue("switch_autoload", 0) 
+    }
+    if ( GM_getValue("page_thread_delayed") == undefined) {
+        GM_setValue("page_thread_delayed", 1000) 
+    }
+    if ( GM_getValue("switch_lazy_load_img") == undefined) {
+        GM_setValue("switch_lazy_load_img", 1) 
+    }
+    if ( GM_getValue("load_thread_delayed") == undefined) {
+        GM_setValue("load_thread_delayed", 500) 
+    }
+    if ( GM_getValue("img_max_height") == undefined) {
+        GM_setValue("img_max_height", 300) 
+    }
+    if ( GM_getValue("img_max_width") == undefined) {
+        GM_setValue("img_max_width", 300) 
+    }
+    if ( GM_getValue("img_max_count") == undefined) {
+        GM_setValue("img_max_count", 3) 
+    }
+
+    const headers = {
         'User-agent': navigator.userAgent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     }
+    const img_data = "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA="
+    console.log("98imgloader ready")
 
     $("tbody[id*='stick']").remove();
     $("div.show-text2").parent().parent().parent().remove();
     $("tbody[id='separatorline']").remove();
 
-    function do_load_thread_info(){
-        $("tbody[id*='normalthread']").each(function(){
+    var load_img_btn = $("<a />");
+    load_img_btn.append($('<div>一键加载图片</div>'))
+    load_img_btn.on("click", function(){
+        do_load_thread_info(1)
+    });
+    $("#scrolltop").append($("<span />").append(load_img_btn));
+    load_img_btn.css("background","None");
+    load_img_btn.css("height","35px");
+
+    // var switch_autoload_btn = $("<a />");
+    // switch_autoload_btn.append($('<div>'+(GM_getValue("switch_autoload") == 1 ? "关闭自动加载" : "开启自动加载")+'</div>'))
+    // switch_autoload_btn.on("click", switch_autoload_fn);
+    // $("#scrolltop").append($("<span />").append(switch_autoload_btn));
+    // switch_autoload_btn.css("background","None");
+    // switch_autoload_btn.css("height","35px");
+
+    // function switch_autoload_fn(){
+    //     GM_setValue("switch_autoload", GM_getValue("switch_autoload") == 1 ? 0 : 1) 
+    //     location.reload();
+    // }
+
+
+    function do_load_thread_info(onekeyload){
+        var count = 0
+        $("tbody[id*='normalthread']").each(function(index){
             var tbody=$(this);
-            var tbody_clone_id = "info_"+tbody.attr("id").split("_")[1];
-            if ($("#"+tbody_clone_id).length != 0) {
-                return;
+            var info_id = "info_"+tbody.attr("id").split("_")[1];
+            var load_btn_id = "load_"+tbody.attr("id").split("_")[1];
+
+            if (tbody.find("#"+load_btn_id).length == 0) {
+                var load_btn = $("<a />")
+                load_btn.text("加载")
+                load_btn.on("click", function(){
+                    load(tbody)
+                })
+                tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:30px"></td>').append(load_btn))
             }
 
-            var tbody_clone = tbody.clone();
-            tbody_clone.attr("id", tbody_clone_id);
-            tbody_clone.find("td,th").remove();
-            var tag_td = $('<td colspan="5"></td>');
-            tbody_clone.find("tr:eq(0)").append(tag_td);
-
-            var url = tbody.find(".icn > a").attr("href");
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: url,
-                headers: headers,
-                onload: function(result) {
-                    if (result.status != 200) {
-                        return ;
+            if (GM_getValue("switch_autoload") == 1 || onekeyload == 1) {
+                if ($("#"+info_id).length == 0) {
+                    if (GM_getValue("load_thread_delayed") == 0) {
+                        load(tbody)
+                    } else {
+                        count++;
+                        setTimeout(function(){
+                            load(tbody)
+                        }, GM_getValue("load_thread_delayed") * count)
                     }
-                    var doc = result.responseText;
-                    load_img(doc,tag_td)
-                    //为防止拿到资源后不点进帖子导致不评分评论收藏等，默认关闭此功能
-                    //如果你看见了这个功能并想使用，不要声张，打开注释即可。
-                    //load_download_link(doc,tag_td)
                 }
-            });
-            tbody.after(tbody_clone);
+            }
+
+            function load(thread_tbody){
+                var tbody_clone_id = "info_"+thread_tbody.attr("id").split("_")[1];
+                if ($("#"+tbody_clone_id).length != 0) {
+                    return ;
+                }
+
+                var tbody_clone = thread_tbody.clone();
+                tbody_clone.attr("id", tbody_clone_id);
+                tbody_clone.find("td,th").remove();
+                var tag_td = $('<td colspan="5"></td>');
+                tbody_clone.find("tr:eq(0)").append(tag_td);
+
+                var url = thread_tbody.find(".icn > a").attr("href");
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: url,
+                    headers: headers,
+                    onload: function(result) {
+                        if (result.status != 200) {
+                            return ;
+                        }
+                        var doc = result.responseText;
+                        var $doc = $( doc )
+                        load_img($doc,tag_td)
+                        // load_download_link($doc,tag_td)
+                    }
+                });
+                thread_tbody.after(tbody_clone);
+            }
+
         })
     }
 
-    function load_img(doc,con){
-        var tag_div = $('<div></div>');
-        tag_div.css("margin-bottom","5px");
-        $(doc).find(".zoom").slice(0, 3).each(function() {
-            var zoomfile = $(this).attr("zoomfile")
-            if (zoomfile != undefined && zoomfile != null && zoomfile != '') {
-                var tag_img = $('<img>');
-                tag_img.attr('src', zoomfile);
+    function load_img($doc,con){
+        var tag_div = $('<div ></div>');
+        tag_div.css({
+            "width"         :"100%",
+            "margin-bottom" :"5px",
+            "overflow-x"    :"auto",
+            "max-height"    :(GM_getValue("img_max_height")+10) + "px",
+        });
+        con.append(tag_div);
+        var inner_tag_div = $('<div style="display: flex;align-items: flex-start;"></div>');
+        
+        var img_selector = "#postlist > div[id^=post_] div.pct:eq(0) div.t_fsz > table img.zoom[zoomfile]";
+        $doc.find(img_selector).slice(0, parseInt(GM_getValue("img_max_count"))).each(function() {
+            var pic_url = $(this).attr( "zoomfile" ) || $(this).attr( "file" ) || $(this).attr( "src" );
+            if (pic_url != undefined && pic_url != null && pic_url != '') {
+                var tag_img = $('<img />');
+                tag_img.attr({
+                    "data-original" : pic_url,
+                    "src"           : GM_getValue("switch_lazy_load_img") == 1 ? img_data : pic_url,
+                    "onclick"       :"zoom(this, this.src, 0, 0, 0)",
+                })
                 tag_img.css({
-                    "max-width": "33%",
-                    "max-height": "300px",
+                    "max-width"    :GM_getValue("img_max_width") + "px",
+                    "max-height"   :GM_getValue("img_max_height") + "px",
+                    "cursor"       :"pointer",
+                    "margin-right" :"3px",
+                    "float"        :"left"
                 });
-
-                tag_div.append(tag_img);
+                inner_tag_div.append(tag_img);
+                if (GM_getValue("switch_lazy_load_img") == 1) {
+                    tag_img.lazyload({threshold:50});
+                }
             }
         });
-        if (tag_div.children().length == 0) {
+        if (inner_tag_div.children().length == 0) {
             tag_div.append("未识别到图片")
+        } else {
+            tag_div.append(inner_tag_div)
         }
-        con.append(tag_div);
+        
     }
 
-    function load_download_link(doc,con){
+    //为防止拿到资源地址后不点进帖子导致不评分评论收藏等，损害创作者权益，默认关闭此功能
+    //开启方式自己找，别来问，别宣传
+    function load_download_link($doc,con){
         var tag_div = $('<div></div>');
-        var _doc = $(doc);
-        _doc.find("span[id*='attach_']").each(function() {
+        var base_selector = "#postlist > div[id^=post_] div.pct:eq(0) div.t_fsz > table "
+        $doc.find(base_selector+"span[id*='attach_']").each(function() {
             var attach = $(this)
             if (attach.find("a").length > 0){
                 tag_div.append(attach.parent().clone())
             }
         });
-        _doc.find("dl.tattl").each(function() {
+        $doc.find(base_selector+"dl.tattl").each(function() {
             var attach = $(this);
             if (attach.find("p.attnm").length > 0){
                 tag_div.append(attach.parent().clone())
             }
         });
-        _doc.find("div.blockcode").each(function() {
+        $doc.find(base_selector+"div.blockcode").each(function() {
             var codediv = $(this)
             codediv.find("li").each(function(){
                 tag_div.append('<div>'+$(this).text()+'</div>')
             })
         });
+        $doc.find(base_selector+"div.blockcode").each(function() {
+            var codediv = $(this)
+            codediv.find("li").each(function(){
+                tag_div.append('<div>'+$(this).text()+'</div>')
+            })
+        });
+        // $doc.find(base_selector+":contains('资源链接') + a").each(function() {
+        //     var codea = $(this)
+        //     console.log(codea)
+        // });
         if (tag_div.children().length == 0) {
             tag_div.append("未识别到资源连接")
+        } else {
+            tag_div.prepend($('<div style="color:red">喜欢本贴的话别忘了点进去评分评论收藏哦！</div>'))
         }
         con.append(tag_div);
     }
 
+    
     var next_btn = $("#autopbn");
     next_btn.on("click",function(){
         console.log("next_btn click!!!")
-        //点击下一页后延迟1.5秒再次触发图片加载。
-        setTimeout(do_load_thread_info, 1500);
+        //点击下一页后延迟page_thread_delayed秒再次触发图片加载。
+        setTimeout(do_load_thread_info, parseInt(GM_getValue("page_thread_delayed")));
+    });
+    do_load_thread_info();
+    
+
+    GM_registerMenuCommand("设置", function() {
+        var config_window = $('<div />');
+        config_window.attr({
+            "id": "config_window"
+        });
+        config_window.css({
+            "position"      : "fixed",
+            "z-index"       : "99999",
+            "top"           : "50%",
+            "left"          : "50%",
+            "background"    : "#ccc",
+            "border-radius" : "4px",
+            "padding"       : "10px 20px"
+        });
+
+        var form = $(`
+            <form>
+                <div>
+                    <input type="checkbox" id="switch_autoload" name="switch_autoload" />
+                    <label for="switch_autoload">开启自动加载</label>
+                    <div style="color: gray;font-style: italic;">* 进入帖子列表或翻页后，自动加载所有未加载过的帖子</div>
+                </div>
+                <div>
+                    <label for="page_thread_delayed">帖子列表遍历延迟</label>
+                    <input type="number" id="page_thread_delayed" name="page_thread_delayed" min="0" max="5000"/>
+                    <label for="page_thread_delayed">毫秒</label>
+                    <div style="color: gray;font-style: italic;">* 间隔多少毫秒加载下个帖子。0为不设延迟，取值范围0-5000</div>
+                </div>
+                <div>
+                    <label for="load_thread_delayed">点击下一页后延迟</label>
+                    <input type="number" id="load_thread_delayed" name="load_thread_delayed" min="500" max="5000"/>
+                    <label for="load_thread_delayed">毫秒再次触发加载</label>
+                    <div style="color: gray;font-style: italic;">* 在开启自动加载的前提下，点击下一页后如果没有自动加载新出的帖子，可以适当调大该值。取值范围500-5000</div>
+                </div>
+                <div>
+                    <input type="checkbox" id="switch_lazy_load_img" name="switch_lazy_load_img" />
+                    <label for="switch_lazy_load_img">开启图片懒加载</label>
+                    <div style="color: gray;font-style: italic;">* 只有图片将要进入显示区时才会下载</div>
+                </div>
+                <div>
+                    <label for="img_max_count">每个帖子最多加载</label>
+                    <input type="number" id="img_max_count" name="img_max_count" min="0" max="10"/>
+                    <label for="img_max_count">张图片</label>
+                    <div style="color: gray;font-style: italic;">* 取值范围0-10</div>
+                </div>
+                <div>
+                    <label for="img_max_width">每行图片最宽占用</label>
+                    <input type="number" id="img_max_width" name="img_max_width" min="200" max="1000"/>
+                    <label for="img_max_width">像素</label>
+                    <div style="color: gray;font-style: italic;">* 图片最宽占用多少空间。单位像素，取值范围200-1000</div>
+                </div>
+                <div>
+                    <label for="img_max_height">每行图片最高占用</label>
+                    <input type="number" id="img_max_height" name="img_max_height" min="200" max="1000"/>
+                    <label for="img_max_height">像素</label>
+                    <div style="color: gray;font-style: italic;">* 图片最高占用多少空间。单位像素，取值范围200-1000</div>
+                </div>
+            </form>
+        `);
+        
+        config_window.append(form);
+
+        var btns = $(`
+            <div>
+                <button id="confirm_btn" style="margin-right:10px">确认</button>
+                <button id="cancel_btn">取消</button>
+            </div>
+        `);
+        btns.find("#confirm_btn").click(function(){
+            console.log("config value:");
+            console.log("switch_autoload", form.find("#switch_autoload").prop("checked"));
+            GM_setValue("switch_autoload", form.find("#switch_autoload").prop("checked") ? 1 : 0);
+            console.log("switch_lazy_load_img", form.find("#switch_lazy_load_img").prop("checked"));
+            GM_setValue("switch_lazy_load_img", form.find("#switch_lazy_load_img").prop("checked") ? 1 : 0);
+            console.log("load_thread_delayed", form.find("#load_thread_delayed").val());
+            GM_setValue("load_thread_delayed", form.find("#load_thread_delayed").val());
+            console.log("page_thread_delayed", form.find("#page_thread_delayed").val());
+            GM_setValue("page_thread_delayed", form.find("#page_thread_delayed").val());
+            console.log("img_max_height", form.find("#img_max_height").val());
+            GM_setValue("img_max_height", form.find("#img_max_height").val());
+            console.log("img_max_width", form.find("#img_max_width").val());
+            GM_setValue("img_max_width", form.find("#img_max_width").val());
+            console.log("img_max_count", form.find("#img_max_count").val());
+            GM_setValue("img_max_count", form.find("#img_max_count").val());
+            
+            config_window.remove();
+        });
+        
+        btns.find("#cancel_btn").click(function(){
+            config_window.remove()
+        });
+        config_window.append(btns);
+
+        form.find("#switch_autoload").prop("checked",GM_getValue("switch_autoload") == 1);
+        form.find("#switch_lazy_load_img").prop("checked",GM_getValue("switch_lazy_load_img") == 1 );
+        form.find("#load_thread_delayed").val(GM_getValue("load_thread_delayed"));
+        form.find("#page_thread_delayed").val(GM_getValue("page_thread_delayed"));
+        form.find("#img_max_height").val(GM_getValue("img_max_height"));
+        form.find("#img_max_width").val(GM_getValue("img_max_width"));
+        form.find("#img_max_count").val(GM_getValue("img_max_count"));
+        
+        config_window.appendTo($("body"));
+        config_window.css("transform", "translate(-50%,-50%)")
+        
     })
-
-    // $("#threadlisttableid").bind("DOMNodeInserted", function(){
-    //     console.log("DOMNodeInserted!!!")
-    // });
-    do_load_thread_info()
-
-
 });
