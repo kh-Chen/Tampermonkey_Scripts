@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.3.1
+// @version      1.3.2
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -74,16 +74,23 @@ const normalthread = {
             var thread_id = $tbody.attr("id").split("_")[1];
             var info_id = "info_" + thread_id;
             var load_btn_id = "load_" + thread_id;
+            var rm_btn_id = "rm_" + thread_id;
 
             if ($tbody.find("#"+load_btn_id).length == 0) {
-                var $load_btn = $("<a />")
-                $load_btn.text("加载")
+                var $load_btn = $('<span title="查看帖内图片" >'+imgs.expand_svg+'</span>')
                 $load_btn.on("click", function(){
                     normalthread.load_thread_info($tbody)
                 })
-                $tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:30px"></td>').append($load_btn))
+                $tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:20px"></td>').append($load_btn))
             }
-
+            if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {
+                var $rm_btn = $('<span title="隐藏此贴" >'+imgs.hide_svg+'</span>')
+                $rm_btn.on("click", function(){
+                    $tbody.remove();
+                    $("#"+info_id).remove();
+                })
+                $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn))
+            }
             if (GM_getValue("switch_autoload") == 1 || isonekeyload == 1) {
                 if ($("#"+info_id).length == 0) {
                     if (GM_getValue("load_thread_delayed") == 0) {
@@ -96,7 +103,6 @@ const normalthread = {
                     }
                 }
             }
-
         })
     },
     load_thread_info: ($thread_tbody) => {
@@ -108,14 +114,13 @@ const normalthread = {
         var $tbody_clone = $thread_tbody.clone();
         $tbody_clone.attr("id", tbody_clone_id);
         $tbody_clone.find("td,th").remove();
-        var $tag_td = $('<td colspan="5"></td>');
+        var $tag_td = $('<td colspan="'+(GM_getValue("show_hide_btn") == 1 ? 7 : 6)+'"></td>');
         $tbody_clone.find("tr:eq(0)").append($tag_td);
 
         var url = "/" + $thread_tbody.find(".icn > a").attr("href");
         tools.request_and_parse_thread(url, $tag_td)
         $thread_tbody.after($tbody_clone);
     }
-
 }
 
 const favorite = {
@@ -181,9 +186,12 @@ const favorite = {
         $thread_li.after($li_clone);
     }
 }
-
+const imgs = {
+    load_img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
+    expand_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M128 192h768v128H128V192zm0 256h512v128H128V448zm0 256h768v128H128V704zm576-352 192 160-192 128V352z"></path></svg>',
+    hide_svg  : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2L371.2 588.8ZM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z" fill="currentColor"></path><path d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z" fill="currentColor"></path></svg>',
+}
 const tools = {
-    img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
     base_selector: "#postlist > div[id^=post_] div.pct:eq(0) div.t_fsz ",
     headers: {
         'User-agent': navigator.userAgent,
@@ -224,7 +232,7 @@ const tools = {
                     var $tag_img = $('<img />');
                     $tag_img.attr({
                         "data-original" : pic_url,
-                        "src"           : GM_getValue("switch_lazy_load_img") == 1 ? tools.img_data : pic_url,
+                        "src"           : GM_getValue("switch_lazy_load_img") == 1 ? imgs.load_img_data : pic_url,
                         "onclick"       :"zoom(this, this.src, 0, 0, 0)",
                     })
                     $tag_img.css({
@@ -369,6 +377,9 @@ const GM_script = {
         if ( GM_getValue("img_max_count") == undefined) {
             GM_setValue("img_max_count", 3);
         }
+        if ( GM_getValue("show_hide_btn") == undefined) {
+            GM_setValue("show_hide_btn", 1);
+        }
     },
     add_config_menu: () => {
         GM_registerMenuCommand("设置", function() {
@@ -388,6 +399,11 @@ const GM_script = {
 
             var $form = $(`
                 <form>
+                    <div>
+                        <input type="checkbox" id="show_hide_btn" name="show_hide_btn" />
+                        <label for="show_hide_btn">显示隐藏按钮</label>
+                        <div style="color: gray;font-style: italic;">* 按钮点击后可以暂时隐藏不感兴趣的帖子。</div>
+                    </div>
                     <div>
                         <input type="checkbox" id="switch_autoload" name="switch_autoload" />
                         <label for="switch_autoload">开启自动加载</label>
@@ -440,7 +456,9 @@ const GM_script = {
                 </div>
             `);
             $btns.find("#confirm_btn").click(function(){
-                console.log("config value:");
+                console.log("config value:");show_hide_btn
+                console.log("show_hide_btn", $form.find("#show_hide_btn").prop("checked"));
+                GM_setValue("show_hide_btn", $form.find("#show_hide_btn").prop("checked") ? 1 : 0);
                 console.log("switch_autoload", $form.find("#switch_autoload").prop("checked"));
                 GM_setValue("switch_autoload", $form.find("#switch_autoload").prop("checked") ? 1 : 0);
                 console.log("switch_lazy_load_img", $form.find("#switch_lazy_load_img").prop("checked"));
@@ -464,6 +482,7 @@ const GM_script = {
             });
             $config_window.append($btns);
 
+            $form.find("#show_hide_btn").prop("checked",GM_getValue("show_hide_btn") == 1);
             $form.find("#switch_autoload").prop("checked",GM_getValue("switch_autoload") == 1);
             $form.find("#switch_lazy_load_img").prop("checked",GM_getValue("switch_lazy_load_img") == 1 );
             $form.find("#load_thread_delayed").val(GM_getValue("load_thread_delayed"));
