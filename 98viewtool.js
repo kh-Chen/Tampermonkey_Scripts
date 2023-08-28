@@ -31,7 +31,7 @@ $(document).ready(() => {
     if (/^.*forum\.php\?.*mod=forumdisplay.*$/g.test(url)){
         normalthread.init()
     } else if (/^.*home\.php\?.*do=favorite.*$/g.test(url)) {
-        // favorite.init()
+        favorite.init()
     } else {
         console.log("url not matched.")
     }
@@ -71,8 +71,9 @@ const normalthread = {
         var count = 0
         $("tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
-            var info_id = "info_"+$tbody.attr("id").split("_")[1];
-            var load_btn_id = "load_"+$tbody.attr("id").split("_")[1];
+            var thread_id = $tbody.attr("id").split("_")[1];
+            var info_id = "info_" + thread_id;
+            var load_btn_id = "load_" + thread_id;
 
             if ($tbody.find("#"+load_btn_id).length == 0) {
                 var $load_btn = $("<a />")
@@ -110,7 +111,85 @@ const normalthread = {
         var $tag_td = $('<td colspan="5"></td>');
         $tbody_clone.find("tr:eq(0)").append($tag_td);
 
-        var url = $thread_tbody.find(".icn > a").attr("href");
+        var url = "/" + $thread_tbody.find(".icn > a").attr("href");
+        tools.request_and_parse_thread(url, $tag_td)
+        $thread_tbody.after($tbody_clone);
+    }
+
+}
+
+const favorite = {
+    init: () => {
+        favorite.add_one_key_btn();
+        favorite.each_thread_list();
+    },
+    add_one_key_btn: () => {
+        var $delete_select_btn = $("button[name='delsubmit']");
+        var $load_img_btn = $("<a />");
+        $load_img_btn.text("一键加载图片");
+        $load_img_btn.on("click", function(){
+            favorite.each_thread_list(1)
+        });
+        $load_img_btn.appendTo($delete_select_btn.parent())
+    },
+    each_thread_list: (isonekeyload) => {
+        var count = 0
+        $("div.bm > form:eq(0) > ul[id='favorite_ul'] > li[id*='fav_']").each(function(index) {
+            var $li=$(this);
+            var thread_id = $li.attr("id").split("_")[1];
+            var info_id = "info_" + thread_id;
+            var load_btn_id = "load_" + thread_id;
+
+            if ($li.find("#"+load_btn_id).length == 0) {
+                var $load_btn = $("<a />");
+                $load_btn.text("加载");
+                $load_btn.attr("id", load_btn_id);
+                $load_btn.addClass("y")
+                $load_btn.css("margin","0 5px")
+                $load_btn.on("click", function(){
+                    favorite.load_thread_info($li)
+                })
+                $li.find("#a_delete_"+thread_id).after($load_btn)
+            }
+
+            if (GM_getValue("switch_autoload") == 1 || isonekeyload == 1) {
+                if ($("#"+info_id).length == 0) {
+                    if (GM_getValue("load_thread_delayed") == 0) {
+                        favorite.load_thread_info($li)
+                    } else {
+                        count++;
+                        setTimeout(() => {
+                            favorite.load_thread_info($li)
+                        }, GM_getValue("load_thread_delayed") * count)
+                    }
+                }
+            }
+        })
+    },
+    load_thread_info: ($thread_li) => {
+        var info_id = "info_" + $thread_li.attr("id").split("_")[1];
+        if ($("#"+info_id).length != 0) {
+            return ;
+        }
+
+        var $li_clone = $thread_li.clone();
+        $li_clone.attr("id", info_id);
+        $li_clone.children("*").remove();
+
+        var url = "/" + $thread_li.find("a:not([id]):eq(0)").attr("href");
+        tools.request_and_parse_thread(url, $li_clone)
+        $thread_li.after($li_clone);
+    }
+}
+
+const tools = {
+    img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
+    base_selector: "#postlist > div[id^=post_] div.pct:eq(0) div.t_fsz ",
+    headers: {
+        'User-agent': navigator.userAgent,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    },
+    request_and_parse_thread: (url, $tag) => {
         GM_xmlhttpRequest({
             method: 'GET',
             url: url,
@@ -121,33 +200,10 @@ const normalthread = {
                 }
                 var doc = result.responseText;
                 var $pre_search_doc = $(doc).find(tools.base_selector)
-                tools.load_img($pre_search_doc, $tag_td)
-                // tools.load_download_link($pre_search_doc, $tag_td)
+                tools.load_img($pre_search_doc, $tag)
+                // tools.load_download_link($pre_search_doc, $tag)
             }
         });
-        $thread_tbody.after($tbody_clone);
-    }
-
-}
-
-const favorite = {
-    init: () => {
-        favorite.each_thread_list();
-    },
-    each_thread_list: (isonekeyload) => {
-        var count = 0
-        $("div.bm > form:eq(0) > ul[id='favorite_ul'] > li[id*='fav_']").each(function(index) {
-            console.log($(this).find("a:eq(1)").attr("href"))
-        })
-    },
-}
-
-const tools = {
-    img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
-    base_selector: "#postlist > div[id^=post_] div.pct:eq(0) div.t_fsz ",
-    headers: {
-        'User-agent': navigator.userAgent,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     },
     load_img: ($from_con, $to_con) => {
         var $tag_div = $('<div ></div>');
@@ -160,7 +216,7 @@ const tools = {
         $to_con.append($tag_div);
         var $inner_tag_div = $('<div style="display: flex;align-items: flex-start;"></div>');
 
-        $from_con.find("img.zoom")
+        $from_con.find("img.zoom[aid]")
             .slice(0, parseInt(GM_getValue("img_max_count")))
             .each(function(){
                 var pic_url = $(this).attr( "zoomfile" ) || $(this).attr( "file" ) || $(this).attr( "src" );
