@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.3.3
+// @version      1.3.5
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -21,6 +21,7 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery_lazyload/1.9.7/jquery.lazyload.min.js
 
 // ==/UserScript==
+
 /* global $ */
 $(document).ready(() => {
     console.log("98imgloader ready")
@@ -37,11 +38,19 @@ $(document).ready(() => {
     }
 
 });
-
+const globalpage = {
+    set_width: () => {
+        if (GM_getValue("reset_width") == 1) {
+            $(".wp").css("width",GM_getValue("reset_width_px") + "px")
+            $("#nv").css("width",GM_getValue("reset_width_px") + "px")
+        }
+    }
+}
 const normalthread = {
     init: () => {
         normalthread.remove_ads();
         normalthread.add_one_key_btn();
+        globalpage.set_width();
         var $next_btn = $("#autopbn");
         $next_btn.on("click",function(){
             console.log("next_btn click!!!")
@@ -190,6 +199,7 @@ const imgs = {
     load_img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
     expand_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M128 192h768v128H128V192zm0 256h512v128H128V448zm0 256h768v128H128V704zm576-352 192 160-192 128V352z"></path></svg>',
     hide_svg  : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2L371.2 588.8ZM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z" fill="currentColor"></path><path d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z" fill="currentColor"></path></svg>',
+    close_svg : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>'
 }
 const tools = {
     base_selector: "#postlist > div[id^=post_]:eq(0) ",
@@ -382,25 +392,76 @@ const GM_script = {
         if ( GM_getValue("show_hide_btn") == undefined) {
             GM_setValue("show_hide_btn", 1);
         }
+        if ( GM_getValue("reset_width") == undefined) {
+            GM_setValue("reset_width", 0);
+        }
+        if ( GM_getValue("reset_width_px") == undefined) {
+            GM_setValue("reset_width_px", 1500);
+        }
     },
     add_config_menu: () => {
         GM_registerMenuCommand("设置", function() {
-            var $config_window = $('<div />');
-            $config_window.attr({
-                "id": "config_window"
-            });
-            $config_window.css({
-                "position"      : "fixed",
-                "z-index"       : "99999",
-                "top"           : "50%",
-                "left"          : "50%",
-                "background"    : "#ccc",
-                "border-radius" : "4px",
-                "padding"       : "10px 20px"
+            var $config_madel = $('<div />');
+            $config_madel.css({
+                "width": "100%",
+                "height": "100%",
+                "background": "rgba(0, 0, 0, 0.4)",
+                "position": "fixed",
+                "top": "0",
+                "left": "0",
+                "visibility": "hidden",
+                "opacity": "0",
+                "z-index": "999",
+                "transition": "all 0.3s",
+            })
+            $config_madel.on("click", function(event) {
+                $config_madel.remove();
+            })
+            $config_madel.keyup(function(e){
+                var key =  e.which || e.keyCode;
+                if(key == 27){
+                    $config_madel.remove();
+                }
             });
 
+            var $config_window = $('<div />');
+            $config_window.css({
+                "position": "fixed",
+                "top": "50%",
+                "left": "50%",
+                "padding"       : "10px 20px",
+                "background-color": "#fff",
+                "border-radius": "10px",
+                "transform": "translate(-50%,-50%)",
+            });
+            $config_window.on("click", function(event) {
+                event.stopPropagation()
+            })
+            $config_window.appendTo($config_madel)
+
+            var $config_title = $(`
+                <div>
+                    <span style="font-weight: bold">设置 -- 98图片浏览助手</span>
+                    <span id="close_cfg_window" title="关闭设置窗口" >${imgs.close_svg}</span>
+                </div>
+            `);
+            $config_title.css({
+                "border-bottom": "1px solid gray",
+                "font-size": "20px",
+                "display": "flex",
+                "justify-content": "space-between"
+            });
+            $config_title.appendTo($config_window)
+
             var $form = $(`
-                <form>
+                <form style="padding: 10px 20px">
+                    <div>
+                        <input type="checkbox" id="reset_width" name="reset_width" />
+                        <label for="reset_width">适应宽屏，将内容宽度设置为</label>
+                        <input type="number" id="reset_width_px" name="reset_width_px" min="500" max="5000"/>
+                        <label for="reset_width_px">px</label>
+                        <div style="color: gray;font-style: italic;">* 勾选后将会把内容区域的宽度设置为给定值。取值范围500-5000</div>
+                    </div>
                     <div>
                         <input type="checkbox" id="show_hide_btn" name="show_hide_btn" />
                         <label for="show_hide_btn">显示隐藏按钮</label>
@@ -448,19 +509,47 @@ const GM_script = {
                     </div>
                 </form>
             `);
-
-            $config_window.append($form);
+            $form.appendTo($config_window)
 
             var $btns = $(`
                 <div>
-                    <button id="confirm_btn" style="margin-right:10px">确认</button>
+                    <button id="confirm_btn">确认</button>
                     <button id="cancel_btn">取消</button>
                 </div>
             `);
-            $btns.find("#confirm_btn").click(function(){
+            $btns.css({
+                "display": "flex",
+                "justify-content": "flex-end",
+            })
+            var css_btn = {
+                "margin-right": "10px",
+                "border-radius": "4px",
+                "border": "none",
+                "min-height": "1em",
+                "padding": "6px 12px",
+                "cursor": "pointer"
+            }
+            var $confirm_btn = $btns.find("#confirm_btn")
+            var $cancel_btn = $btns.find("#cancel_btn")
+            $confirm_btn.css(css_btn);
+            $confirm_btn.css({
+                "color": "#FFF",
+                "background-color": "#2ecc71",
+            });
+            $cancel_btn.css(css_btn);
+            $cancel_btn.css({
+                "color": "#000",
+                "background-color": "#ecf0f1",
+            });
+
+            $confirm_btn.click(function(){
                 console.log("config value:");
                 console.log("show_hide_btn", $form.find("#show_hide_btn").prop("checked"));
                 GM_setValue("show_hide_btn", $form.find("#show_hide_btn").prop("checked") ? 1 : 0);
+                console.log("reset_width", $form.find("#reset_width").prop("checked"));
+                GM_setValue("reset_width", $form.find("#reset_width").prop("checked") ? 1 : 0);
+                console.log("reset_width_px", $form.find("#reset_width_px").val());
+                GM_setValue("reset_width_px", $form.find("#reset_width_px").val());
                 console.log("switch_autoload", $form.find("#switch_autoload").prop("checked"));
                 GM_setValue("switch_autoload", $form.find("#switch_autoload").prop("checked") ? 1 : 0);
                 console.log("switch_lazy_load_img", $form.find("#switch_lazy_load_img").prop("checked"));
@@ -476,15 +565,17 @@ const GM_script = {
                 console.log("img_max_count", $form.find("#img_max_count").val());
                 GM_setValue("img_max_count", $form.find("#img_max_count").val());
 
-                $config_window.remove();
+                $config_madel.remove();
             });
 
-            $btns.find("#cancel_btn").click(function(){
-                $config_window.remove()
+            $cancel_btn.click(function(){
+                $config_madel.remove()
             });
-            $config_window.append($btns);
+            $btns.appendTo($config_window)
 
             $form.find("#show_hide_btn").prop("checked",GM_getValue("show_hide_btn") == 1);
+            $form.find("#reset_width").prop("checked",GM_getValue("reset_width") == 1);
+            $form.find("#reset_width_px").val(GM_getValue("reset_width_px"));
             $form.find("#switch_autoload").prop("checked",GM_getValue("switch_autoload") == 1);
             $form.find("#switch_lazy_load_img").prop("checked",GM_getValue("switch_lazy_load_img") == 1 );
             $form.find("#load_thread_delayed").val(GM_getValue("load_thread_delayed"));
@@ -493,8 +584,10 @@ const GM_script = {
             $form.find("#img_max_width").val(GM_getValue("img_max_width"));
             $form.find("#img_max_count").val(GM_getValue("img_max_count"));
 
-            $config_window.appendTo($("body"));
-            $config_window.css("transform", "translate(-50%,-50%)")
+            $config_madel.appendTo($("body"));
+            $config_madel.css('visibility', 'visible');
+            $config_madel.css('opacity', '1');
+            $config_madel.css('transform', 'scale(1)');
         })
     }
 }
