@@ -403,14 +403,14 @@ const GM_script = {
         GM_script.set_default_value("reset_width_px", 1500);
         GM_script.set_default_value("removed_ids", "");
         GM_script.set_default_value("max_hide_history", 500);
-        var max_length = parseInt(GM_getValue("max_hide_history"))
+        var max_length = parseInt(GM_getValue("max_hide_history"));
         if (max_length == 0) {
-            GM_setValue("removed_ids", "")
+            GM_setValue("removed_ids", "");
         } else {
-            var removed_ids = GM_getValue("removed_ids").split(",")
+            var removed_ids = GM_getValue("removed_ids").split(",");
             if (removed_ids.length > max_length) {
-                removed_ids = removed_ids.slice(0 - max_length)
-                GM_setValue("removed_ids", removed_ids.join(","))
+                removed_ids = removed_ids.slice(0 - max_length);
+                GM_setValue("removed_ids", removed_ids.join(","));
             }
         }
     },
@@ -434,7 +434,7 @@ const GM_script = {
                 "z-index": "999",
                 "transition": "all 0.3s",
             })
-            $config_madel.on("click", function(event) {
+            $config_madel.on("click", function() {
                 $config_madel.remove();
             })
             $config_madel.keyup(function(e){
