@@ -373,11 +373,15 @@ const tools = {
         return custom_selector;
     },
     add_removed_id: (thread_id) => {
+        var max_length = parseInt(GM_getValue("max_hide_history"))
         var removed_ids = GM_getValue("removed_ids").split(",")
+        if (max_length == 0) {
+            GM_setValue("removed_ids", "")
+            return ;
+        } 
         if (!removed_ids.includes(thread_id)) {
             removed_ids.push(thread_id);
         }
-        var max_length = parseInt(GM_getValue("max_hide_history"))
         if (removed_ids.length > max_length) {
             removed_ids = removed_ids.slice(0 - max_length)
         }
@@ -399,6 +403,16 @@ const GM_script = {
         GM_script.set_default_value("reset_width_px", 1500);
         GM_script.set_default_value("removed_ids", "");
         GM_script.set_default_value("max_hide_history", 500);
+        var max_length = parseInt(GM_getValue("max_hide_history"))
+        if (max_length == 0) {
+            GM_setValue("removed_ids", "")
+        } else {
+            var removed_ids = GM_getValue("removed_ids").split(",")
+            if (removed_ids.length > max_length) {
+                removed_ids = removed_ids.slice(0 - max_length)
+                GM_setValue("removed_ids", removed_ids.join(","))
+            }
+        }
     },
     set_default_value: (key, value) => {
         if ( GM_getValue(key) == undefined) {
@@ -424,7 +438,7 @@ const GM_script = {
                 $config_madel.remove();
             })
             $config_madel.keyup(function(e){
-                var key =  e.which || e.keyCode;
+                var key = e.which || e.keyCode;
                 if(key == 27){
                     $config_madel.remove();
                 }
