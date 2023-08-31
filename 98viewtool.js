@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.3.5
+// @version      1.3.6
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
