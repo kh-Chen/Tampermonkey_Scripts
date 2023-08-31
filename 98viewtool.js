@@ -95,13 +95,21 @@ const normalthread = {
             if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {
                 var $rm_btn = $('<span title="隐藏此贴" >'+imgs.hide_svg+'</span>')
                 $rm_btn.on("click", function(){
+                    tools.add_removed_id(thread_id)
                     $tbody.remove();
                     $("#"+info_id).remove();
                 })
                 $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn))
             }
+
+            var removed_ids = GM_getValue("removed_ids").split(",")
+            var removed = removed_ids.includes(thread_id)
+            if (removed) {
+                $tbody.css("background-color", "rgb(197 179 179)")
+            }
+
             if (GM_getValue("switch_autoload") == 1 || isonekeyload == 1) {
-                if ($("#"+info_id).length == 0) {
+                if ($("#"+info_id).length == 0 && !removed) {
                     if (GM_getValue("load_thread_delayed") == 0) {
                         normalthread.load_thread_info($tbody)
                     } else {
@@ -363,40 +371,38 @@ const tools = {
             }
         }
         return custom_selector;
+    },
+    add_removed_id: (thread_id) => {
+        var removed_ids = GM_getValue("removed_ids").split(",")
+        if (!removed_ids.includes(thread_id)) {
+            removed_ids.push(thread_id);
+        }
+        var max_length = parseInt(GM_getValue("max_hide_history"))
+        if (removed_ids.length > max_length) {
+            removed_ids = removed_ids.slice(0 - max_length)
+        }
+        GM_setValue("removed_ids", removed_ids.join(","))
     }
 }
 
 const GM_script = {
     init_variables: () => {
-        if ( GM_getValue("switch_autoload") == undefined) {
-            GM_setValue("switch_autoload", 0);
-        }
-        if ( GM_getValue("page_thread_delayed") == undefined) {
-            GM_setValue("page_thread_delayed", 1000);
-        }
-        if ( GM_getValue("switch_lazy_load_img") == undefined) {
-            GM_setValue("switch_lazy_load_img", 1);
-        }
-        if ( GM_getValue("load_thread_delayed") == undefined) {
-            GM_setValue("load_thread_delayed", 500);
-        }
-        if ( GM_getValue("img_max_height") == undefined) {
-            GM_setValue("img_max_height", 300);
-        }
-        if ( GM_getValue("img_max_width") == undefined) {
-            GM_setValue("img_max_width", 300);
-        }
-        if ( GM_getValue("img_max_count") == undefined) {
-            GM_setValue("img_max_count", 3);
-        }
-        if ( GM_getValue("show_hide_btn") == undefined) {
-            GM_setValue("show_hide_btn", 1);
-        }
-        if ( GM_getValue("reset_width") == undefined) {
-            GM_setValue("reset_width", 0);
-        }
-        if ( GM_getValue("reset_width_px") == undefined) {
-            GM_setValue("reset_width_px", 1500);
+        GM_script.set_default_value("switch_autoload", 0);
+        GM_script.set_default_value("page_thread_delayed", 1000);
+        GM_script.set_default_value("switch_lazy_load_img", 1);
+        GM_script.set_default_value("load_thread_delayed", 500);
+        GM_script.set_default_value("img_max_height", 300);
+        GM_script.set_default_value("img_max_width", 300);
+        GM_script.set_default_value("img_max_count", 3);
+        GM_script.set_default_value("show_hide_btn", 1);
+        GM_script.set_default_value("reset_width", 0);
+        GM_script.set_default_value("reset_width_px", 1500);
+        GM_script.set_default_value("removed_ids", "");
+        GM_script.set_default_value("max_hide_history", 500);
+    },
+    set_default_value: (key, value) => {
+        if ( GM_getValue(key) == undefined) {
+            GM_setValue(key, value);
         }
     },
     add_config_menu: () => {
@@ -451,10 +457,13 @@ const GM_script = {
                 "display": "flex",
                 "justify-content": "space-between"
             });
+            $config_title.find("#close_cfg_window").on("click", function(){
+                $config_madel.remove();
+            })
             $config_title.appendTo($config_window)
 
             var $form = $(`
-                <form style="padding: 10px 20px">
+                <form style="padding: 10px 20px; max-height=600px; overflow-y: auto;">
                     <div>
                         <input type="checkbox" id="reset_width" name="reset_width" />
                         <label for="reset_width">适应宽屏，将内容宽度设置为</label>
@@ -464,8 +473,10 @@ const GM_script = {
                     </div>
                     <div>
                         <input type="checkbox" id="show_hide_btn" name="show_hide_btn" />
-                        <label for="show_hide_btn">显示隐藏按钮</label>
-                        <div style="color: gray;font-style: italic;">* 按钮点击后可以暂时隐藏不感兴趣的帖子。</div>
+                        <label for="show_hide_btn">显示隐藏按钮，最多纪录</label>
+                        <input type="number" id="max_hide_history" name="max_hide_history" min="0" max="5000"/>
+                        <label for="max_hide_history">条隐藏历史</label>
+                        <div style="color: gray;font-style: italic;">* 按钮点击后可以暂时隐藏不感兴趣的帖子。刷新页面后将自动置灰此贴。历史条数取值范围0-5000</div>
                     </div>
                     <div>
                         <input type="checkbox" id="switch_autoload" name="switch_autoload" />
@@ -546,6 +557,8 @@ const GM_script = {
                 console.log("config value:");
                 console.log("show_hide_btn", $form.find("#show_hide_btn").prop("checked"));
                 GM_setValue("show_hide_btn", $form.find("#show_hide_btn").prop("checked") ? 1 : 0);
+                console.log("max_hide_history", $form.find("#max_hide_history").val());
+                GM_setValue("max_hide_history", $form.find("#max_hide_history").val());
                 console.log("reset_width", $form.find("#reset_width").prop("checked"));
                 GM_setValue("reset_width", $form.find("#reset_width").prop("checked") ? 1 : 0);
                 console.log("reset_width_px", $form.find("#reset_width_px").val());
@@ -574,6 +587,7 @@ const GM_script = {
             $btns.appendTo($config_window)
 
             $form.find("#show_hide_btn").prop("checked",GM_getValue("show_hide_btn") == 1);
+            $form.find("#max_hide_history").val(GM_getValue("max_hide_history"));
             $form.find("#reset_width").prop("checked",GM_getValue("reset_width") == 1);
             $form.find("#reset_width_px").val(GM_getValue("reset_width_px"));
             $form.find("#switch_autoload").prop("checked",GM_getValue("switch_autoload") == 1);
