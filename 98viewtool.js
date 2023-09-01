@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.3.6
+// @version      1.3.7
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -241,7 +241,12 @@ const tools = {
         });
         $to_con.append($tag_div);
         var $inner_tag_div = $('<div style="display: flex;align-items: center;"></div>');
-        var $imgs = $from_con.find("img.zoom[aid]")
+        //有些帖子里含有一些分隔符形式的图片，在html特征上与正常的资源图片完全一致，无法过滤
+        //仅能将资源地址为站内地址的图片忽略掉，这种图片基本都是无意义的静态资源。
+        //剩下的从图床下载，与正经资源图片别无二致的分隔符形式图片只能将其视为普通图片显示出来
+        //除非在脚本中进行资源预加载，判断其高度是否过低。但这样资源浪费过于严重。
+        //点名批评forum.php?mod=viewthread&tid=1526548帖中那个welcome的动态图（逃
+        var $imgs = $from_con.find('img.zoom[file^="http"]')
         if ($imgs.length >= parseInt(GM_getValue("img_max_count"))) {
             $inner_tag_div.append('<span style="writing-mode: vertical-lr;">共'+$imgs.length+'张图</span>')
         }
@@ -378,7 +383,7 @@ const tools = {
         if (max_length == 0) {
             GM_setValue("removed_ids", "")
             return ;
-        } 
+        }
         if (!removed_ids.includes(thread_id)) {
             removed_ids.push(thread_id);
         }
