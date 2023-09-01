@@ -246,7 +246,7 @@ const tools = {
         //剩下的从图床下载，与正经资源图片别无二致的分隔符形式图片只能将其视为普通图片显示出来
         //除非在脚本中进行资源预加载，判断其高度是否过低。但这样资源浪费过于严重。
         //点名批评forum.php?mod=viewthread&tid=1526548帖中那个welcome的动态图（逃
-        var $imgs = $from_con.find('img.zoom[file^="http"]')
+        var $imgs = $from_con.find('img.zoom[file^="http"]:not([file*="static/image"])')
         if ($imgs.length >= parseInt(GM_getValue("img_max_count"))) {
             $inner_tag_div.append('<span style="writing-mode: vertical-lr;">共'+$imgs.length+'张图</span>')
         }
