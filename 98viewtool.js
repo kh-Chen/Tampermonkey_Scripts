@@ -405,7 +405,7 @@ const tools = {
         $.each(re_links, function(index, item){
             var $linkdiv = $(`<div><a href="${item}" target="_blank">${item}</a></div>`)
             if (tools.check_link_can115(item)) {
-                var $uploadbtn = $(`<span link="${item}" title="推送到115（需要当前浏览器已登录）" style="margin: 10px 0 0 10px">${imgs.upload_svg}</span>`)
+                var $uploadbtn = $(`<span link="${item}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
                 $uploadbtn.on("click",function(){
                     call115.download($(this).attr("link"))
                 })
