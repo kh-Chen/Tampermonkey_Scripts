@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.3.7
+// @version      1.4.2
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -33,6 +33,8 @@ $(document).ready(() => {
         normalthread.init()
     } else if (/^.*home\.php\?.*do=favorite.*$/g.test(url)) {
         favorite.init()
+    } else if (/^((?!type=reply).)*(home\.php\?.*do=thread)((?!type=reply).)*$/g.test(url)) {
+        userspace.init()
     } else {
         console.log("url not matched.")
     }
@@ -50,6 +52,7 @@ const normalthread = {
     init: () => {
         normalthread.remove_ads();
         normalthread.add_one_key_btn();
+        normalthread.add_column();
         globalpage.set_width();
         var $next_btn = $("#autopbn");
         $next_btn.on("click",function(){
@@ -71,6 +74,9 @@ const normalthread = {
         $load_img_btn.css("background","None");
         $load_img_btn.css("height","35px");
     },
+    add_column: () => {
+        $("#threadlist > div.th > table tr:eq(0)").append($('<td style="width:40px">操作</td>'))
+    },
     remove_ads: () => {
         $("tbody[id*='stick']").remove();
         $("div.show-text2").parent().parent().parent().remove();
@@ -78,7 +84,7 @@ const normalthread = {
     },
     each_thread_list: (isonekeyload) => {
         var count = 0
-        $("tbody[id*='normalthread']").each(function(index) {
+        $("#threadlist table > tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
             var thread_id = $tbody.attr("id").split("_")[1];
             var info_id = "info_" + thread_id;
@@ -203,11 +209,80 @@ const favorite = {
         $thread_li.after($li_clone);
     }
 }
+
+const userspace = {
+    init: () => {
+        userspace.add_one_key_btn();
+        userspace.add_column();
+        userspace.each_thread_list();
+    },
+    add_one_key_btn: () => {
+        var $load_img_btn = $("<a />");
+        $load_img_btn.append($('<div>一键加载图片</div>'))
+        $load_img_btn.on("click", function(){
+            userspace.each_thread_list(1)
+        });
+        $("#scrolltop").append($("<span />").append($load_img_btn));
+        $load_img_btn.css("background","None");
+        $load_img_btn.css("height","35px");
+    },
+    add_column: () => {
+        $("#ct div.tl table:eq(0) > tbody:eq(0) > tr:eq(0)").append($('<td style="width:30px">展开</td>'))
+    },
+    each_thread_list: (isonekeyload) => {
+        var count = 0
+        $("#ct div.tl table:eq(0) > tbody:eq(0) > tr:not([id]):gt(0)").each(function(index) {
+            var $tr=$(this);
+            var thread_id = $tr.find("th:eq(0) > a").attr("href").match(/(?<=tid=)\d*/g);
+            var info_id = "info_" + thread_id;
+            var load_btn_id = "load_" + thread_id;
+
+            if ($tr.find("#"+load_btn_id).length == 0) {
+                var $load_btn = $('<span title="查看帖内图片" >'+imgs.expand_svg+'</span>')
+                $load_btn.on("click", function(){
+                    userspace.load_thread_info($tr, info_id)
+                })
+                $tr.append($('<td id="'+load_btn_id+'" style="width:20px"></td>').append($load_btn))
+            }
+
+            if (GM_getValue("switch_autoload") == 1 || isonekeyload == 1) {
+                if ($tr.find(":contains('求片问答悬赏区')").length == 0 && $("#"+info_id).length == 0) {
+                    if (GM_getValue("load_thread_delayed") == 0) {
+                        userspace.load_thread_info($tr, info_id)
+                    } else {
+                        count++;
+                        setTimeout(() => {
+                            userspace.load_thread_info($tr, info_id)
+                        }, GM_getValue("load_thread_delayed") * count)
+                    }
+                }
+            }
+        })
+    },
+    load_thread_info: ($thread_tr, info_id) => {
+        if ($("#"+info_id).length != 0) {
+            return ;
+        }
+
+        var $tr_clone = $thread_tr.clone();
+        $tr_clone.attr("id", info_id);
+        $tr_clone.children("*").remove();
+
+        var $tag_td = $('<td colspan="6"></td>');
+        $tag_td.appendTo($tr_clone)
+
+        var url = "/" + $thread_tr.find("th:eq(0) > a").attr("href")
+        tools.request_and_parse_thread(url, $tag_td)
+        $thread_tr.after($tr_clone);
+    }
+}
+
 const imgs = {
     load_img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
     expand_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M128 192h768v128H128V192zm0 256h512v128H128V448zm0 256h768v128H128V704zm576-352 192 160-192 128V352z"></path></svg>',
     hide_svg  : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2L371.2 588.8ZM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z" fill="currentColor"></path><path d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z" fill="currentColor"></path></svg>',
-    close_svg : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>'
+    close_svg : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>',
+    upload_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M544 864V672h128L512 480 352 672h128v192H320v-1.6c-5.376.32-10.496 1.6-16 1.6A240 240 0 0 1 64 624c0-123.136 93.12-223.488 212.608-237.248A239.808 239.808 0 0 1 512 192a239.872 239.872 0 0 1 235.456 194.752c119.488 13.76 212.48 114.112 212.48 237.248a240 240 0 0 1-240 240c-5.376 0-10.56-1.28-16-1.6v1.6H544z"></path></svg>'
 }
 const tools = {
     base_selector: "#postlist > div[id^=post_]:eq(0) ",
@@ -302,7 +377,10 @@ const tools = {
             .each(function(){
                 var $codediv = $(this)
                 $codediv.find("li").each(function(){
-                    links.push($(this).text())
+                    var link = $(this).text()
+                    if (tools.check_link(link)) {
+                        links.push(link)
+                    }
                 })
             });
         $from_con.find("a[href]")
@@ -325,7 +403,15 @@ const tools = {
             });
         var re_links = Array.from(new Set(links))
         $.each(re_links, function(index, item){
-            $tag_div.append('<div><a href="'+item+'" target="_blank">'+item+'</a></div>')
+            var $linkdiv = $(`<div><a href="${item}" target="_blank">${item}</a></div>`)
+            if (item.startsWith(tools.link_head[0]) || item.startsWith(tools.link_head[1])) {
+                var $uploadbtn = $(`<span link="${item}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
+                $uploadbtn.on("click",function(){
+                    call115.download($(this).attr("link"))
+                })
+                $uploadbtn.appendTo($linkdiv)
+            }
+            $tag_div.append($linkdiv)
         })
         if ($tag_div.children().length == 0) {
             $tag_div.append("未识别到资源连接")
@@ -334,19 +420,18 @@ const tools = {
         }
         $to_con.append($tag_div);
     },
-    link_head: ["magnet:?xt=","ed2k://","https://pan.quark"],
-    check_link: (linkstr) => {
-        for(let i = 0; i < tools.link_head.length; i++){
-            if (linkstr.startsWith(tools.link_head[i])) {
-                return true
-            }
-        }
-        return false
+    link_head: {
+        can115: ["magnet:?xt=","ed2k://"],
+        other: ["115://","https://pan.quark","https://pan.baidu"],
     },
+    check_link: (linkstr) => tools._check_link(linkstr, [...tools.link_head.can115, ...tools.link_head.other ]),
+    check_link_can115: (linkstr) => tools._check_link(linkstr,tools.link_head.can115),
+    _check_link: (linkstr, heads) => heads.some( (head) => linkstr.startsWith(head) ),
     regExps:[],
     match_link: (text) => {
         if (tools.regExps.length == 0) {
-            tools.link_head.map((currentValue,index,arr) => {
+            let all_link_head = [...tools.link_head.can115, ...tools.link_head.other ];
+            all_link_head.map((currentValue,index,arr) => {
                 var key = currentValue.replaceAll("?","\\?")
                 if (currentValue == "ed2k://") {
                     tools.regExps.push(new RegExp(`(${key})(.+?)(\\|/|复制代码)`, 'g'))
@@ -362,17 +447,16 @@ const tools = {
                 result.push(..._link);
             }
         })
-
         return result;
     },
     _get_custom_selector: () => {
         var custom_selector = '';
-        for(let i = 0; i < tools.link_head.length; i++){
-            var _selector = ':contains('+tools.link_head[i]+')'
-            if ( i != tools.link_head.length-1 ) {
-                custom_selector = custom_selector + _selector + ","
-            }else{
-                custom_selector = custom_selector + _selector
+        let all_link_head = [...tools.link_head.can115, ...tools.link_head.other ];
+        for(let i = 0; i < all_link_head.length; i++){
+            var _selector = ':contains('+all_link_head[i]+')';
+            custom_selector = custom_selector + _selector;
+            if ( i != all_link_head.length-1 ) {
+                custom_selector = custom_selector + ",";
             }
         }
         return custom_selector;
@@ -392,6 +476,77 @@ const tools = {
         }
         GM_setValue("removed_ids", removed_ids.join(","))
     }
+}
+
+const call115 = {
+    X_userID: 0,
+    timeout: 5e3,
+    download: (link) => {
+        try {
+            call115._get_token()
+                .then( tokendata => call115._add_task_url({...tokendata,urls: link}))
+                .then( res => {
+                    if (res.state) {
+                        alert("推送成功")
+                        console.log("_add_task_url",res)
+                    }else{
+                        alert(res.error_msg)
+                        console.log("_add_task_url_1",res)
+                    }
+                })
+        } catch (err) {
+            alert(err.errMsg || err.message)
+            console.log("download",err)
+        }
+    },
+    _add_task_url: (params) => new Promise( async (resolve, reject) => {
+        let userid = await call115._get_userid()
+        const { urls, sign, time, wp_path_id } = params;
+        const pathId = wp_path_id ? wp_path_id : "";
+        GM_xmlhttpRequest({
+            method: "post",
+            url: "http://115.com/web/lixian/?ct=lixian&ac=add_task_url",
+            timeout: call115.timeout,
+            data: `url=${urls}&savepath=&wp_path_id=${pathId}&uid=${userid}&sign=${sign}&time=${time}`,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            onload: (res) => resolve(JSON.parse(res.response)),
+            onerror: (error) => reject(error)
+        });
+    }),
+    _get_token: () => new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: "http://115.com/?ct=offline&ac=space&_=" + new Date().getTime(),
+            timeout: call115.timeout,
+            onload: (responseDetails) => (responseDetails.responseText.indexOf("html") >= 0) ? reject({
+                code: 0,
+                msg: "还没有登录",
+                data: "还没有登录"
+            }) : resolve(JSON.parse(responseDetails.response)),
+            onerror: (error) => reject(error)
+        })
+    }),
+    _get_userid: () => new Promise((resolve, reject) => {
+        if (call115.X_userID != 0) {
+            return resolve(call115.X_userID);
+        }
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: "https://webapi.115.com/offine/downpath",
+            timeout: call115.timeout,
+            onload: (responseDetails) => {
+                try {
+                    call115.X_userID = JSON.parse(responseDetails.response).data[0].user_id;
+                    resolve(call115.X_userID)
+                } catch (error) {
+                    reject(error)
+                }
+            },
+            onerror: (error) => reject(error)
+        });
+    })
 }
 
 const GM_script = {
