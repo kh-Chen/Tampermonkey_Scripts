@@ -475,6 +475,24 @@ const tools = {
             removed_ids = removed_ids.slice(0 - max_length)
         }
         GM_setValue("removed_ids", removed_ids.join(","))
+    },
+    tip: (content) => {    
+        $("#msg").remove();
+        let $tipcon = $(`
+            <div id="msg" style="opacity:0;transition: all 0.5s;position:fixed;top: 10%;left: 50%;transform: translate(-50%,-50%);background: #000;color: #fff;border-radius: 4px;text-align: center;padding: 10px 20px;">
+                ${content}
+            </div>
+        `)
+        $("body").append($tipcon);
+        setTimeout( () => {
+            $tipcon.css("opacity", 0.8)
+        })
+        setTimeout( () => {
+            $tipcon.css("opacity", 0)
+            $tipcon.on("transitionend", function() {
+                $("#msg").remove();
+            })
+        }, 2000);
     }
 }
 
@@ -487,15 +505,15 @@ const call115 = {
                 .then( tokendata => call115._add_task_url({...tokendata,urls: link}))
                 .then( res => {
                     if (res.state) {
-                        alert("推送成功")
+                        tools.tip("推送成功")
                         console.log("_add_task_url",res)
                     }else{
-                        alert(res.error_msg)
+                        tools.tip(res.error_msg)
                         console.log("_add_task_url_1",res)
                     }
                 })
         } catch (err) {
-            alert(err.errMsg || err.message)
+            tools.tip(err.errMsg || err.message)
             console.log("download",err)
         }
     },
@@ -751,11 +769,12 @@ const GM_script = {
                 GM_setValue("img_max_width", $form.find("#img_max_width").val());
                 console.log("img_max_count", $form.find("#img_max_count").val());
                 GM_setValue("img_max_count", $form.find("#img_max_count").val());
-
+                tools.tip("保存成功")
                 $config_madel.remove();
             });
 
             $cancel_btn.click(function(){
+                tools.tip("已取消")
                 $config_madel.remove()
             });
             $btns.appendTo($config_window)
