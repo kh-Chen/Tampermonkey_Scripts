@@ -511,6 +511,9 @@ const call115 = {
                         tools.tip(res.error_msg)
                         console.log("_add_task_url_1",res)
                     }
+                }).catch( (data) => {
+                    tools.tip(data.msg)
+                    console.log("_get_token",res)
                 })
         } catch (err) {
             tools.tip(err.errMsg || err.message)
