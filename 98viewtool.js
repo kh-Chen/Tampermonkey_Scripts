@@ -347,6 +347,9 @@ const tools = {
             headers: tools.headers,
             onload: (result) => {
                 if (result.status != 200) {
+                    if (result.status == 404) {
+                        $tag.append("此贴不存在或已被删除或正在被审核")
+                    }
                     return ;
                 }
                 var doc = result.responseText;
