@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.4.2
+// @version      1.5.3
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -11,6 +11,9 @@
 // @match        https://mzjvl.com/*
 // @match        https://9xr2.app/*
 // @match        https://kzs1w.com/*
+// @match        https://nwurc.com/*
+// @match        https://zbkz6.app/*
+// @match        https://ql75t.cn/*
 
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -53,6 +56,7 @@ const normalthread = {
         normalthread.remove_ads();
         normalthread.add_one_key_btn();
         normalthread.add_column();
+        // normalthread.author_control();
         globalpage.set_width();
         var $next_btn = $("#autopbn");
         $next_btn.on("click",function(){
@@ -64,6 +68,27 @@ const normalthread = {
         });
         normalthread.each_thread_list();
     },
+    // author_control:() => {
+    //     $("#append_parent").bind("DOMNodeInserted", function(event){
+    //         var $btnlist = $(this).find("div[id^=card_].p_pop.card div.card_gender_0 > div.o.cl")
+    //         if ($btnlist.length != 0) {
+    //             $btnlist.each(function(){
+    //                 var $adiv = $(this)
+    //                 var id = $adiv.find("a:eq(0)").attr("id").split("_").pop();
+    //                 var aid = "a_black_"+id
+    //                 if ($adiv.find("a#"+aid).length != 0) {
+    //                     return 
+    //                 }
+    //                 var $newbth = $('<a class="xi2" id="a_black_'+id+'">小黑屋7天</a>')
+    //                 $newbth.on('click',function(){
+    //                     tools.add_user_id($(this).attr("id").split("_").pop())
+    //                     tools.tip(GM_getValue("author_list"))
+    //                 })
+    //                 $newbth.appendTo($adiv)
+    //             })
+    //         }
+    //     })
+    // },
     add_one_key_btn: () => {
         var $load_img_btn = $("<a />");
         $load_img_btn.append($('<div>一键加载图片</div>'))
@@ -90,6 +115,29 @@ const normalthread = {
             var info_id = "info_" + thread_id;
             var load_btn_id = "load_" + thread_id;
             var rm_btn_id = "rm_" + thread_id;
+            var black_btn_id = "black_" + thread_id;
+            var $author_a = $tbody.find("td.by:eq(0) a")
+            var userid = $author_a.attr("href").match(/(?<=uid=)\d*/g)[0];
+            var username = $author_a.text()
+
+            if (GM_getValue("author_control") == 1) {
+                var arr = JSON.parse(GM_getValue("author_list"))
+                if (arr.findIndex((user) => user["id"] == userid) >= 0) {
+                    $tbody.remove();
+                    $("#"+info_id).remove();
+                    return;
+                }
+            }
+
+            if ($tbody.find("#"+black_btn_id).length == 0) {
+                var $black_btn = $('<span title="7天内不看此作者" id="'+black_btn_id+'" uid="'+userid+'">'+imgs.hideuser_svg+'</span>')
+                
+                $black_btn.click(function(){
+                    tools.add_user_id($(this).attr("uid"),username)
+                    tools.tip(GM_getValue("author_list"))
+                })
+                $author_a.after($black_btn)
+            }
 
             if ($tbody.find("#"+load_btn_id).length == 0) {
                 var $load_btn = $('<span title="查看帖内图片" >'+imgs.expand_svg+'</span>')
@@ -98,16 +146,17 @@ const normalthread = {
                 })
                 $tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:20px"></td>').append($load_btn))
             }
-            if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {
+
+            if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {                
                 var $rm_btn = $('<span title="隐藏此贴" >'+imgs.hide_svg+'</span>')
                 $rm_btn.on("click", function(){
                     tools.add_removed_id(thread_id)
                     $tbody.remove();
                     $("#"+info_id).remove();
                 })
-                $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn))
+                $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn));
             }
-
+            
             var removed_ids = GM_getValue("removed_ids").split(",")
             var removed = removed_ids.includes(thread_id)
             if (removed) {
@@ -233,7 +282,7 @@ const userspace = {
         var count = 0
         $("#ct div.tl table:eq(0) > tbody:eq(0) > tr:not([id]):gt(0)").each(function(index) {
             var $tr=$(this);
-            var thread_id = $tr.find("th:eq(0) > a").attr("href").match(/(?<=tid=)\d*/g);
+            var thread_id = $tr.find("th:eq(0) > a").attr("href").match(/(?<=tid=)\d*/g)[0];
             var info_id = "info_" + thread_id;
             var load_btn_id = "load_" + thread_id;
 
@@ -279,10 +328,11 @@ const userspace = {
 
 const imgs = {
     load_img_data: "data:image/gif;base64,R0lGODlhEAAQAPQAAP///2FhYfv7+729vdbW1q2trbe3t/Dw8OHh4bKystHR0czMzPX19dzc3Ovr68LCwsfHxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1CdWlsdCB3aXRoIEdJRiBNb3ZpZSBHZWFyIDQuMAAh/hVNYWRlIGJ5IEFqYXhMb2FkLmluZm8AIfkECQoAAAAsAAAAABAAEAAABVAgII5kaZ6lMBRsISqEYKqtmBTGkRo1gPAG2YiAW40EPAJphVCREIUBiYWijqwpLIBJWviiJGLwukiSkDiEqDUmHXiJNWsgPBMU8nkdxe+PQgAh+QQJCgAAACwAAAAAEAAQAAAFaCAgikfSjGgqGsXgqKhAJEV9wMDB1sUCCIyUgGVoFBIMwcAgQBEKTMCA8GNRR4MCQrTltlA1mCA8qjVVZFG2K+givqNnlDCoFq6ioY9BaxDPI0EACzxQNzAHPAkEgDAOWQY4Kg0JhyMhACH5BAkKAAAALAAAAAAQABAAAAVgICCOI/OQKNoUSCoKxFAUCS2khzHvM4EKOkPLMUu0SISC4QZILpgk2bF5AAgQvtHMBdhqCy6BV0RA3A5ZAKIwSAkWhSwwjkLUCo5rEErm7QxVPzV3AwR8JGsNXCkPDIshACH5BAkKAAAALAAAAAAQABAAAAVSICCOZGmegCCUAjEUxUCog0MeBqwXxmuLgpwBIULkYD8AgbcCvpAjRYI4ekJRWIBju22idgsSIqEg6cKjYIFghg1VRqYZctwZDqVw6ynzZv+AIQAh+QQJCgAAACwAAAAAEAAQAAAFYCAgjmRpnqhADEUxEMLJGG1dGMe5GEiM0IbYKAcQigQ0AiDnKCwYpkYhYUgAWFOYCIFtNaS1AWJESLQGAKq5YWIsCo4lgHAzFmPEI7An+A3sIgc0NjdQJipYL4AojI0kIQAh+QQJCgAAACwAAAAAEAAQAAAFXyAgjmRpnqhIFMVACKZANADCssZBIkmRCLCaoWAIPm6FBUkwJIgYjR5LN7INSCwHwYktdIMqgoNFGhQQpMMt0WCoiGDAAvkQMYkIGLCXQI8OQzdoCC8xBGYFXCmLjCYhADsAAAAAAAAAAAA=",
-    expand_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M128 192h768v128H128V192zm0 256h512v128H128V448zm0 256h768v128H128V704zm576-352 192 160-192 128V352z"></path></svg>',
-    hide_svg  : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2L371.2 588.8ZM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z" fill="currentColor"></path><path d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z" fill="currentColor"></path></svg>',
-    close_svg : '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>',
-    upload_svg: '<svg viewBox="0 0 1024 1024" style="width:16px;height=16px;cursor:pointer" xmlns="http://www.w3.org/2000/svg" data-v-ea893728=""><path fill="currentColor" d="M544 864V672h128L512 480 352 672h128v192H320v-1.6c-5.376.32-10.496 1.6-16 1.6A240 240 0 0 1 64 624c0-123.136 93.12-223.488 212.608-237.248A239.808 239.808 0 0 1 512 192a239.872 239.872 0 0 1 235.456 194.752c119.488 13.76 212.48 114.112 212.48 237.248a240 240 0 0 1-240 240c-5.376 0-10.56-1.28-16-1.6v1.6H544z"></path></svg>'
+    expand_svg  : '<svg viewBox="0 0 1024 1024" width="16px" style="cursor:pointer" xmlns="http://www.w3.org/2000/svg" ><path fill="currentColor" d="M128 192h768v128H128V192zm0 256h512v128H128V448zm0 256h768v128H128V704zm576-352 192 160-192 128V352z"></path></svg>',
+    hide_svg    : '<svg viewBox="0 0 1024 1024" width="16px" style="cursor:pointer" xmlns="http://www.w3.org/2000/svg" ><path d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2L371.2 588.8ZM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z" fill="currentColor"></path><path d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z" fill="currentColor"></path></svg>',
+    close_svg   : '<svg viewBox="0 0 1024 1024" width="16px" style="cursor:pointer" xmlns="http://www.w3.org/2000/svg" ><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>',
+    upload_svg  : '<svg viewBox="0 0 1024 1024" width="16px" style="cursor:pointer" xmlns="http://www.w3.org/2000/svg" ><path fill="currentColor" d="M544 864V672h128L512 480 352 672h128v192H320v-1.6c-5.376.32-10.496 1.6-16 1.6A240 240 0 0 1 64 624c0-123.136 93.12-223.488 212.608-237.248A239.808 239.808 0 0 1 512 192a239.872 239.872 0 0 1 235.456 194.752c119.488 13.76 212.48 114.112 212.48 237.248a240 240 0 0 1-240 240c-5.376 0-10.56-1.28-16-1.6v1.6H544z"></path></svg>',
+    hideuser_svg: '<svg viewBox="0 0 1024 1024" width="16px" style="cursor:pointer" xmlns="http://www.w3.org/2000/svg" ><path d="M730.614 612.961c-27.79 14.626-52.036 35.076-71.115 59.728C615.725 648.664 565.459 635 512 635c-169.551 0-307 137.449-307 307 0 24.3-19.7 44-44 44s-44-19.7-44-44c0-163.047 98.787-303.02 239.774-363.332C279.812 528.088 229 440.978 229 342c0-156.297 126.703-283 283-283s283 126.703 283 283c0 98.978-50.812 186.088-127.774 236.668a394.09 394.09 0 0 1 63.388 34.293zM512 537c107.696 0 195-87.304 195-195s-87.304-195-195-195-195 87.304-195 195 87.304 195 195 195z m252.887 268.8l-64.974-64.973c-17.183-17.183-17.183-45.043 0-62.226s45.043-17.183 62.226 0l64.974 64.974 64.974-64.974c17.183-17.183 45.042-17.183 62.225 0s17.183 45.043 0 62.226L889.338 805.8l64.974 64.974c17.183 17.183 17.183 45.042 0 62.225s-45.042 17.183-62.225 0l-64.974-64.974L762.139 933c-17.183 17.183-45.043 17.183-62.226 0s-17.183-45.042 0-62.225l64.974-64.974z" fill="#000000" p-id="4945"></path></svg>'
 }
 const tools = {
     base_selector: "#postlist > div[id^=post_]:eq(0) ",
@@ -476,7 +526,18 @@ const tools = {
         }
         GM_setValue("removed_ids", removed_ids.join(","))
     },
-    tip: (content) => {    
+    add_user_id: (userid, userName) => {
+        var arr = JSON.parse(GM_getValue("author_list"))
+        if (arr.findIndex((user) => user["id"] == userid) < 0) {
+            arr.push({
+                "id":userid,
+                "name":userName,
+                "date":parseInt(+new Date()/1000)
+            })
+            GM_setValue("author_list", JSON.stringify(arr))
+        }
+    },
+    tip: (content) => {
         $("#msg").remove();
         let $tipcon = $(`
             <div id="msg" style="opacity:0;transition: all 0.5s;position:fixed;top: 10%;left: 50%;transform: translate(-50%,-50%);background: #000;color: #fff;border-radius: 4px;text-align: center;padding: 10px 20px;">
@@ -584,6 +645,8 @@ const GM_script = {
         GM_script.set_default_value("reset_width_px", 1500);
         GM_script.set_default_value("removed_ids", "");
         GM_script.set_default_value("max_hide_history", 500);
+        GM_script.set_default_value("author_control", 0);
+        GM_script.set_default_value("author_list", "[]");
         var max_length = parseInt(GM_getValue("max_hide_history"));
         if (max_length == 0) {
             GM_setValue("removed_ids", "");
@@ -594,6 +657,10 @@ const GM_script = {
                 GM_setValue("removed_ids", removed_ids.join(","));
             }
         }
+        var now = parseInt(+new Date()/1000)
+        var arr = JSON.parse(GM_getValue("author_list"))
+        var newarr = arr.filter(user => (now - user["date"]) < 60*60*24*7 )
+        GM_setValue("author_list", JSON.stringify(newarr))
     },
     set_default_value: (key, value) => {
         if ( GM_getValue(key) == undefined) {
@@ -713,9 +780,20 @@ const GM_script = {
                         <label for="img_max_height">像素</label>
                         <div style="color: gray;font-style: italic;">* 图片最高占用多少空间。单位像素，取值范围200-1000</div>
                     </div>
+                    <div>
+                        <input type="checkbox" id="author_control" name="author_control" />
+                        <label for="author_control">开启作者筛选  --  当前小黑屋 ${JSON.parse(GM_getValue("author_list")).length} 人</label>
+                        <button id="clear_black" type=button>清空小黑屋</button>
+                        <div style="color: gray;font-style: italic;">* 点击帖子作者后方的图标即可在7天内自动隐藏此人的帖子</div>
+                    </div>
                 </form>
             `);
-            $form.appendTo($config_window)
+            $form.appendTo($config_window);
+            var $clearbtn = $form.find("#clear_black");
+            $clearbtn.click(function() {
+                GM_setValue("author_list", "[]");
+                tools.tip("清理成功");
+            });
 
             var $btns = $(`
                 <div>
@@ -760,6 +838,8 @@ const GM_script = {
                 GM_setValue("reset_width_px", $form.find("#reset_width_px").val());
                 console.log("switch_autoload", $form.find("#switch_autoload").prop("checked"));
                 GM_setValue("switch_autoload", $form.find("#switch_autoload").prop("checked") ? 1 : 0);
+                console.log("author_control", $form.find("#author_control").prop("checked"));
+                GM_setValue("author_control", $form.find("#author_control").prop("checked") ? 1 : 0);
                 console.log("switch_lazy_load_img", $form.find("#switch_lazy_load_img").prop("checked"));
                 GM_setValue("switch_lazy_load_img", $form.find("#switch_lazy_load_img").prop("checked") ? 1 : 0);
                 console.log("load_thread_delayed", $form.find("#load_thread_delayed").val());
@@ -787,6 +867,7 @@ const GM_script = {
             $form.find("#reset_width").prop("checked",GM_getValue("reset_width") == 1);
             $form.find("#reset_width_px").val(GM_getValue("reset_width_px"));
             $form.find("#switch_autoload").prop("checked",GM_getValue("switch_autoload") == 1);
+            $form.find("#author_control").prop("checked",GM_getValue("author_control") == 1);
             $form.find("#switch_lazy_load_img").prop("checked",GM_getValue("switch_lazy_load_img") == 1 );
             $form.find("#load_thread_delayed").val(GM_getValue("load_thread_delayed"));
             $form.find("#page_thread_delayed").val(GM_getValue("page_thread_delayed"));
