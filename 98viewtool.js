@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.5.3
+// @version      1.5.4
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -77,7 +77,7 @@ const normalthread = {
     //                 var id = $adiv.find("a:eq(0)").attr("id").split("_").pop();
     //                 var aid = "a_black_"+id
     //                 if ($adiv.find("a#"+aid).length != 0) {
-    //                     return 
+    //                     return
     //                 }
     //                 var $newbth = $('<a class="xi2" id="a_black_'+id+'">小黑屋7天</a>')
     //                 $newbth.on('click',function(){
@@ -131,10 +131,10 @@ const normalthread = {
 
             if ($tbody.find("#"+black_btn_id).length == 0) {
                 var $black_btn = $('<span title="7天内不看此作者" id="'+black_btn_id+'" uid="'+userid+'">'+imgs.hideuser_svg+'</span>')
-                
+
                 $black_btn.click(function(){
                     tools.add_user_id($(this).attr("uid"),username)
-                    tools.tip(GM_getValue("author_list"))
+                    tools.tip("操作成功")
                 })
                 $author_a.after($black_btn)
             }
@@ -147,7 +147,7 @@ const normalthread = {
                 $tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:20px"></td>').append($load_btn))
             }
 
-            if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {                
+            if (GM_getValue("show_hide_btn") == 1 && $tbody.find("#"+rm_btn_id).length == 0) {
                 var $rm_btn = $('<span title="隐藏此贴" >'+imgs.hide_svg+'</span>')
                 $rm_btn.on("click", function(){
                     tools.add_removed_id(thread_id)
@@ -156,7 +156,7 @@ const normalthread = {
                 })
                 $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn));
             }
-            
+
             var removed_ids = GM_getValue("removed_ids").split(",")
             var removed = removed_ids.includes(thread_id)
             if (removed) {
@@ -577,7 +577,7 @@ const call115 = {
                     }
                 }).catch( (data) => {
                     tools.tip(data.msg)
-                    console.log("_get_token",res)
+                    console.log("_get_token",data)
                 })
         } catch (err) {
             tools.tip(err.errMsg || err.message)
