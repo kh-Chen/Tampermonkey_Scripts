@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.5.4
+// @version      1.5.6
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -14,6 +14,8 @@
 // @match        https://nwurc.com/*
 // @match        https://zbkz6.app/*
 // @match        https://ql75t.cn/*
+// @match        https://0uzb0.app/*
+// @match        https://d2wpb.com/*
 
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -28,6 +30,7 @@
 /* global $ */
 $(document).ready(() => {
     console.log("98imgloader ready")
+    GM_script.init_styles();
     GM_script.init_variables();
     GM_script.add_config_menu();
 
@@ -129,6 +132,18 @@ const normalthread = {
                 }
             }
 
+            var removed_ids = GM_getValue("removed_ids").split(",")
+            var removed = removed_ids.includes(thread_id)
+            if (removed) {
+                if (GM_getValue("hideorgray") == "gray") {
+                    $tbody.css("background-color", "rgb(197 179 179)")
+                } else {
+                    $tbody.remove();
+                    $("#"+info_id).remove();
+                    return ;
+                }
+            }
+
             if ($tbody.find("#"+black_btn_id).length == 0) {
                 var $black_btn = $('<span title="7天内不看此作者" id="'+black_btn_id+'" uid="'+userid+'">'+imgs.hideuser_svg+'</span>')
 
@@ -155,12 +170,6 @@ const normalthread = {
                     $("#"+info_id).remove();
                 })
                 $tbody.find("tr").append($('<td id="'+rm_btn_id+'" style="width:20px"></td>').append($rm_btn));
-            }
-
-            var removed_ids = GM_getValue("removed_ids").split(",")
-            var removed = removed_ids.includes(thread_id)
-            if (removed) {
-                $tbody.css("background-color", "rgb(197 179 179)")
             }
 
             if (GM_getValue("switch_autoload") == 1 || isonekeyload == 1) {
@@ -635,6 +644,14 @@ const call115 = {
 }
 
 const GM_script = {
+    init_styles: () => {
+        GM_addStyle(`
+            .setting-remark{
+                color: gray;
+                font-style: italic;
+            }
+       `);
+    },
     init_variables: () => {
         GM_script.set_default_value("switch_autoload", 0);
         GM_script.set_default_value("page_thread_delayed", 1000);
@@ -648,6 +665,7 @@ const GM_script = {
         GM_script.set_default_value("reset_width_px", 1500);
         GM_script.set_default_value("removed_ids", "");
         GM_script.set_default_value("max_hide_history", 500);
+        GM_script.set_default_value("hideorgray", "gray");
         GM_script.set_default_value("author_control", 0);
         GM_script.set_default_value("author_list", "[]");
         var max_length = parseInt(GM_getValue("max_hide_history"));
@@ -734,66 +752,80 @@ const GM_script = {
                         <label for="reset_width">适应宽屏，将内容宽度设置为</label>
                         <input type="number" id="reset_width_px" name="reset_width_px" min="500" max="5000"/>
                         <label for="reset_width_px">px</label>
-                        <div style="color: gray;font-style: italic;">* 勾选后将会把内容区域的宽度设置为给定值。取值范围500-5000</div>
+                        <div class="setting-remark">* 勾选后将会把内容区域的宽度设置为给定值。取值范围500-5000</div>
                     </div>
                     <div>
                         <input type="checkbox" id="show_hide_btn" name="show_hide_btn" />
                         <label for="show_hide_btn">显示隐藏按钮，最多纪录</label>
                         <input type="number" id="max_hide_history" name="max_hide_history" min="0" max="5000"/>
-                        <label for="max_hide_history">条隐藏历史</label>
-                        <div style="color: gray;font-style: italic;">* 按钮点击后可以暂时隐藏不感兴趣的帖子。刷新页面后将自动置灰此贴。历史条数取值范围0-5000</div>
+                        <label for="max_hide_history">条隐藏历史 -- 当前已记录 ${GM_getValue("removed_ids").split(",").length} 条 </label>
+                        <button id="clear_hide" type=button>清空</button>
+                        <div class="setting-remark">* 按钮点击后可以暂时隐藏帖子，并记录此贴ID。取值范围0-5000</div>
+                        <div style="margin-left:24px">
+                            <span>刷新页面后，自动</span>
+                            <input type="radio" id="hide" name="hideorgray" value="hide" />
+                            <label for="hide">隐藏</label>
+                            <input type="radio" id="gray" name="hideorgray" value="gray" />
+                            <label for="gray">置灰</label>
+                            <span>标记过的帖子</span>
+                        </div>
                     </div>
                     <div>
                         <input type="checkbox" id="switch_autoload" name="switch_autoload" />
                         <label for="switch_autoload">开启自动加载</label>
-                        <div style="color: gray;font-style: italic;">* 进入帖子列表或翻页后，自动加载所有未加载过的帖子</div>
+                        <div class="setting-remark">* 进入帖子列表或翻页后，自动加载所有未加载过的帖子</div>
                     </div>
                     <div>
                         <label for="load_thread_delayed">帖子列表遍历延迟</label>
                         <input type="number" id="load_thread_delayed" name="load_thread_delayed" min="0" max="5000"/>
                         <label for="load_thread_delayed">毫秒</label>
-                        <div style="color: gray;font-style: italic;">* 间隔多少毫秒加载下个帖子。0为不设延迟，取值范围0-5000</div>
+                        <div class="setting-remark">* 间隔多少毫秒加载下个帖子。0为不设延迟，取值范围0-5000</div>
                     </div>
                     <div>
                         <label for="page_thread_delayed">点击下一页后延迟</label>
                         <input type="number" id="page_thread_delayed" name="page_thread_delayed" min="500" max="5000"/>
                         <label for="page_thread_delayed">毫秒再次触发加载</label>
-                        <div style="color: gray;font-style: italic;">* 在开启自动加载的前提下，点击下一页后如果没有自动加载新出的帖子，可以适当调大该值。取值范围500-5000</div>
+                        <div class="setting-remark">* 在开启自动加载的前提下，点击下一页后如果没有自动加载新出的帖子，可以适当调大该值。取值范围500-5000</div>
                     </div>
                     <div>
                         <input type="checkbox" id="switch_lazy_load_img" name="switch_lazy_load_img" />
                         <label for="switch_lazy_load_img">开启图片懒加载</label>
-                        <div style="color: gray;font-style: italic;">* 只有图片将要进入显示区时才会下载</div>
+                        <div class="setting-remark">* 只有图片将要进入显示区时才会下载</div>
                     </div>
                     <div>
                         <label for="img_max_count">每个帖子最多加载</label>
                         <input type="number" id="img_max_count" name="img_max_count" min="0" max="10"/>
                         <label for="img_max_count">张图片</label>
-                        <div style="color: gray;font-style: italic;">* 取值范围0-10</div>
+                        <div class="setting-remark">* 取值范围0-10</div>
                     </div>
                     <div>
                         <label for="img_max_width">每行图片最宽占用</label>
                         <input type="number" id="img_max_width" name="img_max_width" min="200" max="1000"/>
                         <label for="img_max_width">像素</label>
-                        <div style="color: gray;font-style: italic;">* 图片最宽占用多少空间。单位像素，取值范围200-1000</div>
+                        <div class="setting-remark">* 图片最宽占用多少空间。单位像素，取值范围200-1000</div>
                     </div>
                     <div>
                         <label for="img_max_height">每行图片最高占用</label>
                         <input type="number" id="img_max_height" name="img_max_height" min="200" max="1000"/>
                         <label for="img_max_height">像素</label>
-                        <div style="color: gray;font-style: italic;">* 图片最高占用多少空间。单位像素，取值范围200-1000</div>
+                        <div class="setting-remark">* 图片最高占用多少空间。单位像素，取值范围200-1000</div>
                     </div>
                     <div>
                         <input type="checkbox" id="author_control" name="author_control" />
                         <label for="author_control">开启作者筛选  --  当前小黑屋 ${JSON.parse(GM_getValue("author_list")).length} 人</label>
                         <button id="clear_black" type=button>清空小黑屋</button>
-                        <div style="color: gray;font-style: italic;">* 点击帖子作者后方的图标即可在7天内自动隐藏此人的帖子</div>
+                        <div class="setting-remark">* 点击帖子作者后方的图标即可在7天内自动隐藏此人的帖子</div>
                     </div>
                 </form>
             `);
             $form.appendTo($config_window);
-            var $clearbtn = $form.find("#clear_black");
-            $clearbtn.click(function() {
+            var $clear_hide_btn = $form.find("#clear_hide");
+            $clear_hide_btn.click(function() {
+                GM_setValue("removed_ids", "");
+                tools.tip("清理成功");
+            });
+            var $clear_blackbtn = $form.find("#clear_black");
+            $clear_blackbtn.click(function() {
                 GM_setValue("author_list", "[]");
                 tools.tip("清理成功");
             });
@@ -835,6 +867,8 @@ const GM_script = {
                 GM_setValue("show_hide_btn", $form.find("#show_hide_btn").prop("checked") ? 1 : 0);
                 console.log("max_hide_history", $form.find("#max_hide_history").val());
                 GM_setValue("max_hide_history", $form.find("#max_hide_history").val());
+                console.log("hideorgray", $form.find("input[name='hideorgray']:checked").val());
+                GM_setValue("hideorgray", $form.find("input[name='hideorgray']:checked").val());
                 console.log("reset_width", $form.find("#reset_width").prop("checked"));
                 GM_setValue("reset_width", $form.find("#reset_width").prop("checked") ? 1 : 0);
                 console.log("reset_width_px", $form.find("#reset_width_px").val());
@@ -877,6 +911,7 @@ const GM_script = {
             $form.find("#img_max_height").val(GM_getValue("img_max_height"));
             $form.find("#img_max_width").val(GM_getValue("img_max_width"));
             $form.find("#img_max_count").val(GM_getValue("img_max_count"));
+            $form.find("input[id='"+GM_getValue("hideorgray")+"']").attr('checked', 'true');
 
             $config_madel.appendTo($("body"));
             $config_madel.css('visibility', 'visible');
