@@ -473,7 +473,7 @@ const tools = {
             var $115btn = $('<button type=button>一键推送</button>')
             $115btn.on('click',function(){
                 var arrlink = []
-                $(this).parent().find('a[dlflag="1"]').each(function(){
+                $(this).parent().parent().find('a[dlflag="1"]').each(function(){
                     var _115link = $(this).attr('href')
                     if (tools.check_link_can115(_115link)) {
                         arrlink.push(_115link)
