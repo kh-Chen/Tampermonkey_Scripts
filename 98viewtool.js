@@ -24,6 +24,7 @@
 // @grant        GM_registerMenuCommand
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery_lazyload/1.9.7/jquery.lazyload.min.js
+// @require      https://greasyfork.org/scripts/475748-zip%E8%A7%A3%E5%8E%8B%E5%B7%A5%E5%85%B7/code/zip%E8%A7%A3%E5%8E%8B%E5%B7%A5%E5%85%B7.js
 
 // ==/UserScript==
 
@@ -422,16 +423,18 @@ const tools = {
         var $tag_div = $('<div></div>');
         $from_con.find("span[id*='attach_']")
             .each(function(){
-                var $attach = $(this)
+                var $attach = $(this);
                 if ($attach.find("a").length > 0){
-                    $tag_div.append($attach.parent().clone())
+                    $tag_div.append($attach.parent().clone());
+                    tools.handleZip($tag_div,$attach);
                 }
             });
         $from_con.find("dl.tattl")
             .each(function(){
                 var $attach = $(this);
                 if ($attach.find("p.attnm").length > 0){
-                    $tag_div.append($attach.parent().clone())
+                    $tag_div.append($attach.parent().clone());
+                    tools.handleZip($tag_div,$attach);
                 }
             });
         var links = [];
@@ -453,9 +456,7 @@ const tools = {
                     links.push(link)
                 }
             });
-
-        var custom_selector = tools._get_custom_selector();
-        $from_con.find(custom_selector)
+        $from_con.find(tools._get_custom_selector())
             .each(function(){
                 var text = $(this).text() + ' ';
                 if (text.trim() != '') {
@@ -463,24 +464,61 @@ const tools = {
                     links.push(..._links);
                 }
             });
-        var re_links = Array.from(new Set(links))
-        $.each(re_links, function(index, item){
-            var $linkdiv = $(`<div><a href="${item}" target="_blank">${item}</a></div>`)
-            if (tools.check_link_can115(item)) {
-                var $uploadbtn = $(`<span link="${item}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
-                $uploadbtn.on("click",function(){
-                    call115.download($(this).attr("link"))
-                })
-                $uploadbtn.appendTo($linkdiv)
-            }
-            $tag_div.append($linkdiv)
-        })
+
+        Array.from(new Set(links)).map((link,index,arr) => tools.append_link(link,$tag_div))
+        
         if ($tag_div.children().length == 0) {
             $tag_div.append("未识别到资源连接")
         } else {
+            var $115btn = $('<button type=button>一键推送</button>')
+            $115btn.on('click',function(){
+                var arrlink = []
+                $(this).offsetParent().find('a[dlflag="1"]').each(function(){
+                    var _115link = $(this).attr('href')
+                    if (tools.check_link_can115(_115link)) {
+                        arrlink.push(_115link)
+                    }
+                })
+                if (arrlink.length == 0) {
+                    tools.tip("没有找到ed2k或磁力链接！");
+                    return
+                }
+                call115.download(arrlink)
+                console.log(arrlink)
+            })
+            $tag_div.prepend($("<div></div>").append($115btn))
             $tag_div.prepend($('<div style="color:red">喜欢本贴的话别忘了点进去评分评论收藏哦！</div>'))
         }
         $to_con.append($tag_div);
+    },
+    append_link: (link,$tag_div) => {
+        var $linkdiv = $(`<div><a href="${link}" dlflag="1" target="_blank">${link}</a></div>`)
+        if (tools.check_link_can115(link)) {
+            var $uploadbtn = $(`<span link="${link}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
+            $uploadbtn.on("click",function(){
+                call115.download($(this).attr("link"))
+            })
+            $uploadbtn.appendTo($linkdiv)
+        }
+        $tag_div.append($linkdiv)
+    },
+    handleZip: ($tag_div, $attach) => {
+        var $a_tag = $attach.find('a:eq(0)')
+        if ($a_tag.text().toLowerCase().endsWith('.zip')){
+            var $btn = $('<button type=button>解析压缩包</button>')
+            var zipdownloadlink = $a_tag.attr("href")
+            $btn.on('click',function(){
+                readfirsttxtfileinzip(zipdownloadlink).then( text => {
+                    text.split('\n').map((text,index,arr) => tools.append_link(text,$tag_div))
+                }).catch( error => {
+                    console.log(error)
+                    if (error.message == 'Encrypted zip are not supported') {
+                        tools.tip('暂不支持加密压缩包')
+                    }
+                })
+            })
+            $tag_div.append($btn)
+        }
     },
     link_head: {
         can115: ["magnet:?xt=","ed2k://"],
@@ -578,7 +616,7 @@ const call115 = {
                 .then( tokendata => call115._add_task_url({...tokendata,urls: link}))
                 .then( res => {
                     if (res.state) {
-                        tools.tip("推送成功")
+                        tools.tip(Array.isArray(link) ? ("成功推送"+link.length+"个链接") : "推送成功")
                         console.log("_add_task_url",res)
                     }else{
                         tools.tip(res.error_msg)
@@ -597,15 +635,29 @@ const call115 = {
         let userid = await call115._get_userid()
         const { urls, sign, time, wp_path_id } = params;
         const pathId = wp_path_id ? wp_path_id : "";
+        let datastr = `savepath=&wp_path_id=${pathId}&uid=${userid}&sign=${sign}&time=${time}`
+        if (Array.isArray(urls)) {
+            urls.map((url,index,arr) => {
+                datastr += `&url%5B${index}%5D=${encodeURIComponent(url)}`
+            })
+        }else{
+            datastr += "&url="+urls
+        }
         GM_xmlhttpRequest({
             method: "post",
-            url: "http://115.com/web/lixian/?ct=lixian&ac=add_task_url",
+            url: "http://115.com/web/lixian/?ct=lixian&ac=" + (Array.isArray(urls) ? 'add_task_urls' : 'add_task_url'),
             timeout: call115.timeout,
-            data: `url=${urls}&savepath=&wp_path_id=${pathId}&uid=${userid}&sign=${sign}&time=${time}`,
+            data: datastr,
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+                "User-Agent": navigator.userAgent,
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Origin": "https://115.com",
+                "X-Requested-With": "XMLHttpRequest"
             },
-            onload: (res) => resolve(JSON.parse(res.response)),
+            onload: (res) => {
+                resolve(JSON.parse(res.response))
+            },
             onerror: (error) => reject(error)
         });
     }),
