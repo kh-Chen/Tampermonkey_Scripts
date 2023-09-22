@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.5.6
+// @version      1.6.0
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -473,7 +473,7 @@ const tools = {
             var $115btn = $('<button type=button>一键推送</button>')
             $115btn.on('click',function(){
                 var arrlink = []
-                $(this).offsetParent().find('a[dlflag="1"]').each(function(){
+                $(this).parent().find('a[dlflag="1"]').each(function(){
                     var _115link = $(this).attr('href')
                     if (tools.check_link_can115(_115link)) {
                         arrlink.push(_115link)
