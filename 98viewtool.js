@@ -25,6 +25,7 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery_lazyload/1.9.7/jquery.lazyload.min.js
 // @require      https://greasyfork.org/scripts/475748-zip%E8%A7%A3%E5%8E%8B%E5%B7%A5%E5%85%B7/code/zip%E8%A7%A3%E5%8E%8B%E5%B7%A5%E5%85%B7.js
+// @require      https://greasyfork.org/scripts/475896-115%E6%8E%A8%E9%80%81%E5%B7%A5%E5%85%B7/code/115%E6%8E%A8%E9%80%81%E5%B7%A5%E5%85%B7.js
 
 // ==/UserScript==
 
@@ -72,27 +73,6 @@ const normalthread = {
         });
         normalthread.each_thread_list();
     },
-    // author_control:() => {
-    //     $("#append_parent").bind("DOMNodeInserted", function(event){
-    //         var $btnlist = $(this).find("div[id^=card_].p_pop.card div.card_gender_0 > div.o.cl")
-    //         if ($btnlist.length != 0) {
-    //             $btnlist.each(function(){
-    //                 var $adiv = $(this)
-    //                 var id = $adiv.find("a:eq(0)").attr("id").split("_").pop();
-    //                 var aid = "a_black_"+id
-    //                 if ($adiv.find("a#"+aid).length != 0) {
-    //                     return
-    //                 }
-    //                 var $newbth = $('<a class="xi2" id="a_black_'+id+'">小黑屋7天</a>')
-    //                 $newbth.on('click',function(){
-    //                     tools.add_user_id($(this).attr("id").split("_").pop())
-    //                     tools.tip(GM_getValue("author_list"))
-    //                 })
-    //                 $newbth.appendTo($adiv)
-    //             })
-    //         }
-    //     })
-    // },
     add_one_key_btn: () => {
         var $load_img_btn = $("<a />");
         $load_img_btn.append($('<div>一键加载图片</div>'))
@@ -365,7 +345,7 @@ const tools = {
                 var doc = result.responseText;
                 var $pre_search_doc = $(doc).find(tools.base_selector)
                 tools.load_img($pre_search_doc, $tag)
-                // tools.load_download_link($pre_search_doc, $tag)
+                tools.load_download_link($pre_search_doc, $tag)
             }
         });
     },
@@ -465,7 +445,7 @@ const tools = {
                 }
             });
 
-        Array.from(new Set(links)).map((link,index,arr) => tools.append_link(link,$tag_div))
+        Array.from(new Set(links.map(link => link.trim()))).map((link,index,arr) => tools.append_link(link,$tag_div))
         
         if ($tag_div.children().length == 0) {
             $tag_div.append("未识别到资源连接")
@@ -483,8 +463,26 @@ const tools = {
                     tools.tip("没有找到ed2k或磁力链接！");
                     return
                 }
-                call115.download(arrlink)
-                console.log(arrlink)
+                call115.push_urls(arrlink).then( result => {
+                    if (Array.isArray(result)) {
+                        let succ = 0;
+                        let error = 0;
+                        let errortext = "";
+                        result.map((item,index,arr) => {
+                            if (item.state) {
+                                succ++
+                            } else {
+                                error++;
+                                errortext += (item.error_msg + "：" + item.url + '<br/>')
+                            }
+                        })
+                        if (error == 0) {
+                            tools.tip(`成功推送${succ}条链接`)
+                        } else {
+                            tools.tip(`共推送${result.length}条链接，成功${succ}条，失败${error}条：<br/> ${errortext}`,1000*10)
+                        }
+                    }
+                }).catch( msg => tools.tip(msg))
             })
             $tag_div.prepend($("<div></div>").append($115btn))
             $tag_div.prepend($('<div style="color:red">喜欢本贴的话别忘了点进去评分评论收藏哦！</div>'))
@@ -496,7 +494,10 @@ const tools = {
         if (tools.check_link_can115(link)) {
             var $uploadbtn = $(`<span link="${link}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
             $uploadbtn.on("click",function(){
-                call115.download($(this).attr("link"))
+                call115.push_urls($(this).attr("link")).then( result => {
+                    if (result[0].state) tools.tip("推送成功")
+                    else tools.tip(result[0].error_msg)
+                }).catch( msg => tools.tip(msg))
             })
             $uploadbtn.appendTo($linkdiv)
         }
@@ -587,8 +588,10 @@ const tools = {
             GM_setValue("author_list", JSON.stringify(arr))
         }
     },
-    tip: (content) => {
+    _tipTimerId:null,
+    tip: (content,time) => {
         $("#msg").remove();
+        clearTimeout(tools._tipTimerId);
         let $tipcon = $(`
             <div id="msg" style="opacity:0;transition: all 0.5s;position:fixed;top: 10%;left: 50%;transform: translate(-50%,-50%);background: #000;color: #fff;border-radius: 4px;text-align: center;padding: 10px 20px;">
                 ${content}
@@ -598,101 +601,13 @@ const tools = {
         setTimeout( () => {
             $tipcon.css("opacity", 0.8)
         })
-        setTimeout( () => {
+        tools._tipTimerId = setTimeout( () => {
             $tipcon.css("opacity", 0)
             $tipcon.on("transitionend", function() {
                 $("#msg").remove();
             })
-        }, 2000);
+        }, time?time:2000);
     }
-}
-
-const call115 = {
-    X_userID: 0,
-    timeout: 5e3,
-    download: (link) => {
-        try {
-            call115._get_token()
-                .then( tokendata => call115._add_task_url({...tokendata,urls: link}))
-                .then( res => {
-                    if (res.state) {
-                        tools.tip(Array.isArray(link) ? ("成功推送"+link.length+"个链接") : "推送成功")
-                        console.log("_add_task_url",res)
-                    }else{
-                        tools.tip(res.error_msg)
-                        console.log("_add_task_url_1",res)
-                    }
-                }).catch( (data) => {
-                    tools.tip(data.msg)
-                    console.log("_get_token",data)
-                })
-        } catch (err) {
-            tools.tip(err.errMsg || err.message)
-            console.log("download",err)
-        }
-    },
-    _add_task_url: (params) => new Promise( async (resolve, reject) => {
-        let userid = await call115._get_userid()
-        const { urls, sign, time, wp_path_id } = params;
-        const pathId = wp_path_id ? wp_path_id : "";
-        let datastr = `savepath=&wp_path_id=${pathId}&uid=${userid}&sign=${sign}&time=${time}`
-        if (Array.isArray(urls)) {
-            urls.map((url,index,arr) => {
-                datastr += `&url%5B${index}%5D=${encodeURIComponent(url)}`
-            })
-        }else{
-            datastr += "&url="+urls
-        }
-        GM_xmlhttpRequest({
-            method: "post",
-            url: "http://115.com/web/lixian/?ct=lixian&ac=" + (Array.isArray(urls) ? 'add_task_urls' : 'add_task_url'),
-            timeout: call115.timeout,
-            data: datastr,
-            headers: {
-                "User-Agent": navigator.userAgent,
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Origin": "https://115.com",
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            onload: (res) => {
-                resolve(JSON.parse(res.response))
-            },
-            onerror: (error) => reject(error)
-        });
-    }),
-    _get_token: () => new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: "http://115.com/?ct=offline&ac=space&_=" + new Date().getTime(),
-            timeout: call115.timeout,
-            onload: (responseDetails) => (responseDetails.responseText.indexOf("html") >= 0) ? reject({
-                code: 0,
-                msg: "还没有登录",
-                data: "还没有登录"
-            }) : resolve(JSON.parse(responseDetails.response)),
-            onerror: (error) => reject(error)
-        })
-    }),
-    _get_userid: () => new Promise((resolve, reject) => {
-        if (call115.X_userID != 0) {
-            return resolve(call115.X_userID);
-        }
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: "https://webapi.115.com/offine/downpath",
-            timeout: call115.timeout,
-            onload: (responseDetails) => {
-                try {
-                    call115.X_userID = JSON.parse(responseDetails.response).data[0].user_id;
-                    resolve(call115.X_userID)
-                } catch (error) {
-                    reject(error)
-                }
-            },
-            onerror: (error) => reject(error)
-        });
-    })
 }
 
 const GM_script = {
