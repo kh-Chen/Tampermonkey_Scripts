@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.6.0
+// @version      1.6.1
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -93,6 +93,8 @@ const normalthread = {
     },
     each_thread_list: (isonekeyload) => {
         var count = 0
+        var block_user = 0
+        var hide = 0
         $("#threadlist table > tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
             var thread_id = $tbody.attr("id").split("_")[1];
@@ -109,6 +111,7 @@ const normalthread = {
                 if (arr.findIndex((user) => user["id"] == userid) >= 0) {
                     $tbody.remove();
                     $("#"+info_id).remove();
+                    block_user++
                     return;
                 }
             }
@@ -121,6 +124,7 @@ const normalthread = {
                 } else {
                     $tbody.remove();
                     $("#"+info_id).remove();
+                    hide++
                     return ;
                 }
             }
@@ -166,6 +170,16 @@ const normalthread = {
                 }
             }
         })
+
+        if (!isonekeyload) {
+            if (GM_getValue("author_control") == 1 && GM_getValue("hideorgray") == "hide") {
+                tools.tip(`已隐藏屏蔽用户帖子${block_user}条，隐藏标记帖子${hide}条`)
+            }else if (GM_getValue("author_control") == 1) {
+                tools.tip(`已隐藏屏蔽用户帖子${block_user}条`)
+            }else if (GM_getValue("hideorgray") == "hide") {
+                tools.tip(`已隐藏标记帖子${hide}条`)
+            }
+        }
     },
     load_thread_info: ($thread_tbody) => {
         var tbody_clone_id = "info_" + $thread_tbody.attr("id").split("_")[1];
