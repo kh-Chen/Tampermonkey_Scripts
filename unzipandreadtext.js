@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         zip解压工具
 // @namespace    unzipandreadtext
-// @version      1.0.0
+// @version      1.0.1
 // @description  传入zip文件链接，返回其中第一个txt文件中的内容。
 // @author       sehuatang_chen
 // @license      MIT
@@ -14,7 +14,7 @@
     script.src = "https://cdn.bootcdn.net/ajax/libs/jszip/3.9.1/jszip.min.js";
     document.documentElement.appendChild(script);
 })()
-headers={
+const headers={
     'User-agent': navigator.userAgent,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
 }
@@ -29,7 +29,7 @@ function readZip(link) {
             responseType: 'blob',
             onload: (result) => {
                 if (result.status === 200 || result.status === 304) {
-                    jszip.loadAsync(result.response).then(zip => resolve(zip)).catch(err => reject(err));          
+                    jszip.loadAsync(result.response).then(zip => resolve(zip)).catch(err => reject(err));
                 }else{
                     reject("download err.")
                 }

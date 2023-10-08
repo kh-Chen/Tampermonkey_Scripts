@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         115推送工具
 // @namespace    unzipandreadtext
-// @version      1.0.0
+// @version      1.0.2
 // @description  推送磁力或ed2k链接到115。需要当前浏览器已登录到115
 // @author       sehuatang_chen
 // @license      MIT
@@ -44,7 +44,12 @@ const call115 = {
                     .then( tokendata => call115._add_task_urls({...tokendata,urls: links}))
                     .then( res => {
                         console.log("_add_task_urls", res);
-                        resolve(res.result);
+                        if (res.result != undefined) {
+                            resolve(res.result)
+                        }else {
+                            resolve([res])
+                        }
+                        // resolve(res.result || [res]);
                     }).catch( (data) => {
                         console.log("_get_token", data);
                         reject(data.msg);
