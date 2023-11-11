@@ -61,7 +61,6 @@ const normalthread = {
         normalthread.remove_ads();
         normalthread.add_one_key_btn();
         normalthread.add_column();
-        // normalthread.author_control();
         globalpage.set_width();
         var $next_btn = $("#autopbn");
         $next_btn.on("click",function(){
@@ -529,6 +528,8 @@ const tools = {
                     console.log(error)
                     if (error.message == 'Encrypted zip are not supported') {
                         tools.tip('暂不支持加密压缩包')
+                    }else if (error == 'download err.'){
+                        tools.tip("压缩包文件下载失败")
                     }
                 })
             })
