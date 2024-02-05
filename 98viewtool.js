@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.6.1
+// @version      1.6.2
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -9,13 +9,16 @@
 // @match        https://www.sehuatang.org/*
 // @match        https://www.sehuatang.net/*
 // @match        https://mzjvl.com/*
-// @match        https://9xr2.app/*
 // @match        https://kzs1w.com/*
 // @match        https://nwurc.com/*
 // @match        https://zbkz6.app/*
 // @match        https://ql75t.cn/*
 // @match        https://0uzb0.app/*
 // @match        https://d2wpb.com/*
+// @match        https://wkt41.com/*
+// @match        https://koz4j.com/*
+// @match        https://lxlyy.app/*
+// @match        https://9mij8.cn/*
 
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -94,6 +97,11 @@ const normalthread = {
         var count = 0
         var block_user = 0
         var hide = 0
+        $("#threadlist table > tbody:not([id])").each(function(index) {
+            var $_tbody=$(this);
+            $_tbody.find("tr").append($('<td style="width:20px"></td>'));
+            $_tbody.find("tr").append($('<td style="width:20px"></td>'));
+        })
         $("#threadlist table > tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
             var thread_id = $tbody.attr("id").split("_")[1];
@@ -503,6 +511,7 @@ const tools = {
         $to_con.append($tag_div);
     },
     append_link: (link,$tag_div) => {
+        link = link.trim()
         var $linkdiv = $(`<div><a href="${link}" dlflag="1" target="_blank">${link}</a></div>`)
         if (tools.check_link_can115(link)) {
             var $uploadbtn = $(`<span link="${link}" title="推送到115（需要当前浏览器已登录）" style="margin-left: 10px">${imgs.upload_svg}</span>`)
