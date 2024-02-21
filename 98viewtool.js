@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.6.2
+// @version      1.6.4
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -97,12 +97,14 @@ const normalthread = {
         var count = 0
         var block_user = 0
         var hide = 0
-        $("#threadlist table > tbody:not([id])").each(function(index) {
+        $("#threadlist table[id='threadlisttableid'] > tbody:not([id])").each(function(index) {
             var $_tbody=$(this);
-            $_tbody.find("tr").append($('<td style="width:20px"></td>'));
-            $_tbody.find("tr").append($('<td style="width:20px"></td>'));
+            if ($_tbody.find('td[id^="noid_"]').length == 0) {
+                $_tbody.find("tr").append($('<td id="noid_1_'+index+'" style="width:20px"></td>'));
+                $_tbody.find("tr").append($('<td id="noid_2_'+index+'" style="width:20px"></td>'));
+            }
         })
-        $("#threadlist table > tbody[id*='normalthread']").each(function(index) {
+        $("#threadlist table[id='threadlisttableid'] > tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
             var thread_id = $tbody.attr("id").split("_")[1];
             var info_id = "info_" + thread_id;
@@ -366,7 +368,7 @@ const tools = {
                 var doc = result.responseText;
                 var $pre_search_doc = $(doc).find(tools.base_selector)
                 tools.load_img($pre_search_doc, $tag)
-                tools.load_download_link($pre_search_doc, $tag)
+                // tools.load_download_link($pre_search_doc, $tag)
             }
         });
     },
