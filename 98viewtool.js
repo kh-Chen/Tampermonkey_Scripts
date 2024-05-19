@@ -461,7 +461,7 @@ const tools = {
             });
 
         Array.from(new Set(links.map(link => link.trim()))).map((link,index,arr) => tools.append_link(link,$tag_div))
-        
+
         if ($tag_div.children().length == 0) {
             $tag_div.append("未识别到资源连接")
         } else {
@@ -538,9 +538,9 @@ const tools = {
             })
             $tag_div.append($btn)
         } else if ($a_tag.text().toLowerCase().endsWith('.txt')) {
-            var $btn = $('<button type=button>加载文档</button>')
+            var $btn1 = $('<button type=button>加载文档</button>')
             var txtdownloadlink = $a_tag.attr("href")
-            $btn.on('click',function(){
+            $btn1.on('click',function(){
                 let _header = {
                     ...headers,
                     'Referer':txtdownloadlink
@@ -564,7 +564,7 @@ const tools = {
                     }
                 });
             })
-            $tag_div.append($btn)
+            $tag_div.append($btn1)
         }
     },
     link_head: {
