@@ -1,24 +1,16 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.6.4
+// @version      1.7.0
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
 
 // @match        https://www.sehuatang.org/*
 // @match        https://www.sehuatang.net/*
-// @match        https://mzjvl.com/*
-// @match        https://kzs1w.com/*
-// @match        https://nwurc.com/*
-// @match        https://zbkz6.app/*
-// @match        https://ql75t.cn/*
-// @match        https://0uzb0.app/*
-// @match        https://d2wpb.com/*
-// @match        https://wkt41.com/*
-// @match        https://koz4j.com/*
-// @match        https://lxlyy.app/*
-// @match        https://9mij8.cn/*
+// @match        https://rgkm7.cs33u.com/*
+// @match        https://he2w0.0lr3i.com/*
+// @match        https://https://vsgo.k3ut8.com/*
 
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -429,7 +421,7 @@ const tools = {
                 var $attach = $(this);
                 if ($attach.find("a").length > 0){
                     $tag_div.append($attach.parent().clone());
-                    tools.handleZip($tag_div,$attach);
+                    tools.handleZipOrTxt($tag_div,$attach);
                 }
             });
         $from_con.find("dl.tattl")
@@ -437,7 +429,7 @@ const tools = {
                 var $attach = $(this);
                 if ($attach.find("p.attnm").length > 0){
                     $tag_div.append($attach.parent().clone());
-                    tools.handleZip($tag_div,$attach);
+                    tools.handleZipOrTxt($tag_div,$attach);
                 }
             });
         var links = [];
@@ -527,7 +519,7 @@ const tools = {
         }
         $tag_div.append($linkdiv)
     },
-    handleZip: ($tag_div, $attach) => {
+    handleZipOrTxt: ($tag_div, $attach) => {
         var $a_tag = $attach.find('a:eq(0)')
         if ($a_tag.text().toLowerCase().endsWith('.zip')){
             var $btn = $('<button type=button>解析压缩包</button>')
@@ -543,6 +535,34 @@ const tools = {
                         tools.tip("压缩包文件下载失败")
                     }
                 })
+            })
+            $tag_div.append($btn)
+        } else if ($a_tag.text().toLowerCase().endsWith('.txt')) {
+            var $btn = $('<button type=button>加载文档</button>')
+            var txtdownloadlink = $a_tag.attr("href")
+            $btn.on('click',function(){
+                let _header = {
+                    ...headers,
+                    'Referer':txtdownloadlink
+                }
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: txtdownloadlink,
+                    headers: _header,
+                    responseType: 'blob',
+                    onload: (result) => {
+                        if (result.status === 200 || result.status === 304) {
+                            var reader = new FileReader();
+                                reader.readAsText(result.response, 'utf-8');
+                                reader.onload = function (e) {
+                                    var text = reader.result
+                                    text.split('\n').map((text,index,arr) => tools.append_link(text,$link_div))
+                                }
+                        }else{
+                            tools.tip("文件下载失败")
+                        }
+                    }
+                });
             })
             $tag_div.append($btn)
         }
