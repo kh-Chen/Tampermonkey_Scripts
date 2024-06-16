@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.7.1
+// @version      1.7.2
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
@@ -89,6 +89,7 @@ const normalthread = {
         var count = 0
         var block_user = 0
         var hide = 0
+        var threadcount = 0
         $("#threadlist table[id='threadlisttableid'] > tbody:not([id])").each(function(index) {
             var $_tbody=$(this);
             if ($_tbody.find('td[id^="noid_"]').length == 0) {
@@ -129,7 +130,7 @@ const normalthread = {
                     return ;
                 }
             }
-
+            threadcount++
             if ($tbody.find("#"+black_btn_id).length == 0) {
                 var $black_btn = $('<span title="7天内不看此作者" id="'+black_btn_id+'" uid="'+userid+'">'+imgs.hideuser_svg+'</span>')
 
@@ -180,6 +181,14 @@ const normalthread = {
             }else if (GM_getValue("hideorgray") == "hide") {
                 tools.tip(`已隐藏标记帖子${hide}条`)
             }
+        }
+
+        if (threadcount < 10) {
+            tools.tip(`不足10条帖子，自动下一页`)
+            setTimeout(() => {
+                var $next_btn = $("#autopbn");
+                $next_btn.click()
+            }, 2000);
         }
     },
     load_thread_info: ($thread_tbody) => {
@@ -634,23 +643,45 @@ const tools = {
             GM_setValue("author_list", JSON.stringify(arr))
         }
     },
-    _tipTimerId:null,
+    _tipTimerIds: [],
     tip: (content,time) => {
-        $("#msg").remove();
-        clearTimeout(tools._tipTimerId);
+        //寻找空闲位置
+        var index = -1;
+        for(var i = 0; i < tools._tipTimerIds.length; i++) {
+            var id = tools._tipTimerIds[i]
+            if ($("#"+id).length == 0) {
+                index = i;
+                break;
+            }
+        }
+        if (index == -1) {
+            index = tools._tipTimerIds.length
+        } 
+
+        var msgid = "msg_" + index
+        if (index >= tools._tipTimerIds.length) {
+            tools._tipTimerIds.push(msgid)
+        } else {
+            tools._tipTimerIds[index] = msgid
+        }
+        
+        var top = 60+(index*40)
+
         let $tipcon = $(`
-            <div id="msg" style="opacity:0;transition: all 0.5s;position:fixed;top: 10%;left: 50%;transform: translate(-50%,-50%);background: #000;color: #fff;border-radius: 4px;text-align: center;padding: 10px 20px;">
+            <div id="${msgid}" style="opacity:0;transition: all 0.5s;position:fixed;top: ${top}px;left: 50%;transform: translate(-50%,-50%);background: #000;color: #fff;border-radius: 4px;text-align: center;padding: 10px 20px;">
                 ${content}
             </div>
         `)
         $("body").append($tipcon);
+        
         setTimeout( () => {
             $tipcon.css("opacity", 0.8)
         })
-        tools._tipTimerId = setTimeout( () => {
+        
+        setTimeout( () => {
             $tipcon.css("opacity", 0)
             $tipcon.on("transitionend", function() {
-                $("#msg").remove();
+                $("#"+msgid).remove();
             })
         }, time?time:2000);
     }
