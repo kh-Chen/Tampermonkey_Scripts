@@ -144,7 +144,7 @@ const normalthread = {
             if ($tbody.find("#"+load_btn_id).length == 0) {
                 var $load_btn = $('<span title="查看帖内图片" >'+imgs.expand_svg+'</span>')
                 $load_btn.on("click", function(){
-                    normalthread.load_thread_info($tbody)
+                    normalthread.load_thread_info($tbody,1)
                 })
                 $tbody.find("tr").append($('<td id="'+load_btn_id+'" style="width:20px"></td>').append($load_btn))
             }
@@ -191,9 +191,12 @@ const normalthread = {
             }, 2000);
         }
     },
-    load_thread_info: ($thread_tbody) => {
+    load_thread_info: ($thread_tbody, isswitch) => {
         var tbody_clone_id = "info_" + $thread_tbody.attr("id").split("_")[1];
         if ($("#"+tbody_clone_id).length != 0) {
+            if (isswitch == 1) {
+                $("#"+tbody_clone_id).toggle();
+            }
             return ;
         }
 
