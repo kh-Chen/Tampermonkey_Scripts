@@ -1,16 +1,14 @@
 // ==UserScript==
 // @name         98图片预览助手
 // @namespace    98imgloader
-// @version      1.7.2
+// @version      1.8.0
 // @description  浏览帖子列表时自动加载内部前三张(可配置)图片供预览。如需支持其他免翻地址，请使用@match自行添加连接，如果某个版块不希望预览，请使用@exclude自行添加要排除的版块链接
 // @author       sehuatang_chen
 // @license      MIT
 
 // @match        https://www.sehuatang.org/*
 // @match        https://www.sehuatang.net/*
-// @match        https://rgkm7.cs33u.com/*
-// @match        https://he2w0.0lr3i.com/*
-// @match        https://https://vsgo.k3ut8.com/*
+// @match        http://127.0.0.1:20000/*
 
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -90,6 +88,7 @@ const normalthread = {
         var block_user = 0
         var hide = 0
         var threadcount = 0
+        var keyword = 0
         $("#threadlist table[id='threadlisttableid'] > tbody:not([id])").each(function(index) {
             var $_tbody=$(this);
             if ($_tbody.find('td[id^="noid_"]').length == 0) {
@@ -97,6 +96,14 @@ const normalthread = {
                 $_tbody.find("tr").append($('<td id="noid_2_'+index+'" style="width:20px"></td>'));
             }
         })
+        var kwregArr = []
+        if (GM_getValue("switch_keyword") == 1) {
+            var kwarr = GM_getValue("keyword_str").split("\n")
+            for(let i = 0; i < kwarr.length; i++){
+                kwregArr.push(RegExp(kwarr[i],"g"))
+            }
+        }
+
         $("#threadlist table[id='threadlisttableid'] > tbody[id*='normalthread']").each(function(index) {
             var $tbody=$(this);
             var thread_id = $tbody.attr("id").split("_")[1];
@@ -130,6 +137,17 @@ const normalthread = {
                     return ;
                 }
             }
+            var title = $tbody.find("a.xst").text()
+            for(let i = 0; i < kwregArr.length; i++){
+                var re = kwregArr[i]
+                if (re.test(title)) {
+                    $tbody.remove();
+                    $("#"+info_id).remove();
+                    keyword++
+                    return;
+                }
+            }
+
             threadcount++
             if ($tbody.find("#"+black_btn_id).length == 0) {
                 var $black_btn = $('<span title="7天内不看此作者" id="'+black_btn_id+'" uid="'+userid+'">'+imgs.hideuser_svg+'</span>')
@@ -174,13 +192,48 @@ const normalthread = {
         })
 
         if (!isonekeyload) {
-            if (GM_getValue("author_control") == 1 && GM_getValue("hideorgray") == "hide") {
-                tools.tip(`已隐藏屏蔽用户帖子${block_user}条，隐藏标记帖子${hide}条`)
-            }else if (GM_getValue("author_control") == 1) {
-                tools.tip(`已隐藏屏蔽用户帖子${block_user}条`)
-            }else if (GM_getValue("hideorgray") == "hide") {
-                tools.tip(`已隐藏标记帖子${hide}条`)
+            var t = ""
+            var b1 = false
+            var b2 = false
+            if ( GM_getValue("author_control") == 1 ) {
+                if (!b1) {
+                    t = "已隐藏"
+                    b1 = true
+                }
+                t += `屏蔽用户帖子${block_user}条`
+                b2 = true
             }
+            if (GM_getValue("hideorgray") == "hide") {
+                if (!b1) {
+                    t = "已隐藏"
+                    b1 = true
+                }
+                if (b2) {
+                    t += "，"
+                }
+                t += `已读标记帖子${hide}条`
+                b2 = true
+            }
+            if (GM_getValue("switch_keyword") == 1) {
+                if (!b1) {
+                    t = "已隐藏"
+                    b1 = true
+                }
+                if (b2) {
+                    t += "，"
+                }
+                t += `关键字命中帖子${keyword}条`
+                b2 = true
+            }
+
+            tools.tip(t)
+            // if (GM_getValue("author_control") == 1 && GM_getValue("hideorgray") == "hide") {
+            //     tools.tip(`已隐藏屏蔽用户帖子${block_user}条，隐藏标记帖子${hide}条`)
+            // }else if (GM_getValue("author_control") == 1) {
+            //     tools.tip(`已隐藏屏蔽用户帖子${block_user}条`)
+            // }else if (GM_getValue("hideorgray") == "hide") {
+            //     tools.tip(`已隐藏标记帖子${hide}条`)
+            // }
         }
 
         if (threadcount < 10) {
@@ -863,6 +916,12 @@ const GM_script = {
                         <button id="clear_black" type=button>清空小黑屋</button>
                         <div class="setting-remark">* 点击帖子作者后方的图标即可在7天内自动隐藏此人的帖子</div>
                     </div>
+                    <div>
+                        <input type="checkbox" id="switch_keyword" name="switch_keyword" />
+                        <label for="switch_keyword">开启关键词屏蔽</label><br/>
+                        <textarea style="margin-left:25px;width:300px;overflow-y: true;" rows="5" id="keyword_str" name="keyword_str"></textarea>
+                        <div class="setting-remark">* 关键词支持正则表达式，每行一个关键字</div>
+                    </div>
                 </form>
             `);
             $form.appendTo($config_window);
@@ -936,6 +995,10 @@ const GM_script = {
                 GM_setValue("img_max_width", $form.find("#img_max_width").val());
                 console.log("img_max_count", $form.find("#img_max_count").val());
                 GM_setValue("img_max_count", $form.find("#img_max_count").val());
+                console.log("switch_keyword", $form.find("#switch_keyword").prop("checked"));
+                GM_setValue("switch_keyword", $form.find("#switch_keyword").prop("checked") ? 1 : 0);
+                console.log("keyword_str", $form.find("#keyword_str").val());
+                GM_setValue("keyword_str", $form.find("#keyword_str").val());
                 tools.tip("保存成功")
                 $config_madel.remove();
             });
@@ -958,6 +1021,8 @@ const GM_script = {
             $form.find("#img_max_height").val(GM_getValue("img_max_height"));
             $form.find("#img_max_width").val(GM_getValue("img_max_width"));
             $form.find("#img_max_count").val(GM_getValue("img_max_count"));
+            $form.find("#switch_keyword").prop("checked",GM_getValue("switch_keyword") == 1 );
+            $form.find("#keyword_str").val(GM_getValue("keyword_str"));
             $form.find("input[id='"+GM_getValue("hideorgray")+"']").attr('checked', 'true');
 
             $config_madel.appendTo($("body"));
